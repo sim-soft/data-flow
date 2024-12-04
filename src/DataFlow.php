@@ -2,16 +2,16 @@
 
 namespace Simsoft\DataFlow;
 
+use Closure;
+use Exception;
 use Simsoft\DataFlow\Enums\Signal;
 use Simsoft\DataFlow\Extractors\IterableExtractor;
-use Simsoft\DataFlow\Loaders\VisualLoader;
+use Simsoft\DataFlow\Loaders\Preview;
+use Simsoft\DataFlow\Loaders\Visualize;
 use Simsoft\DataFlow\Traits\DataFrame;
 use Simsoft\DataFlow\Traits\PayloadHandling;
 use Simsoft\DataFlow\Transformers\Filter;
 use Simsoft\DataFlow\Transformers\Mapping;
-use Simsoft\DataFlow\Transformers\Preview;
-use Closure;
-use Exception;
 
 /**
  * DataFlow class.
@@ -19,9 +19,6 @@ use Exception;
 class DataFlow
 {
     use DataFrame, PayloadHandling;
-
-    /** @var bool Preview mode. */
-    protected bool $previewMode = false;
 
     /**
      * Constructor
@@ -149,10 +146,6 @@ class DataFlow
      */
     public function load(Processor|Closure ...$loaders): static
     {
-        if ($this->previewMode) {
-            return $this;
-        }
-
         foreach ($loaders as $loader) {
             if ($loader instanceof Closure) {
                 $loader = new CallableProcessor($loader);
@@ -173,21 +166,23 @@ class DataFlow
      */
     public function preview(int $max = 1): static
     {
-        $this->previewMode = true;
-        return $this->transform(new Preview($max));
+        if ($max <= 0) {
+            throw new Exception('Max number of previews must be greater than 0');
+        }
+
+        return $this->limit($max)->load(new Preview());
     }
 
     /**
      * Visualize data in the pipeline.
      *
-     * @param int $max Maximum number of rows to preview.
      * @param string $format Output format. Default: json.
      * @return $this
      * @throws Exception
      */
-    public function visualize(int $max = -1, string $format = 'json'): static
+    public function visualize(string $format = Visualize::FORMAT_JSON): static
     {
-        return $this->load(new VisualLoader($max, $format));
+        return $this->load(new Visualize($format));
     }
 
     /**

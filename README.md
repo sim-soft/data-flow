@@ -1,6 +1,6 @@
 # Introduction
 
-Simple ETL Pipeline library.
+Simple ETL Pipeline data flow.
 
 ## Install
 
@@ -23,7 +23,7 @@ use Simsoft\DataFlow\DataFlow;
         return $num * 2;
     })
     ->load(function($num) {
-        echo $num . "\n";
+        echo $num . PHP_EOL;
     })
     ->run();
 
@@ -49,7 +49,7 @@ use Simsoft\DataFlow\DataFlow;
     })
     ->limit(5)  // output only 5 data.
     ->load(function($num) {
-        echo $num . "\n";
+        echo $num . PHP_EOL;
     })
     ->run();
 
@@ -61,15 +61,13 @@ use Simsoft\DataFlow\DataFlow;
 // 10
 ```
 
-Chunk
-
-```
-
 ## Filter
-
 Filter method help you to filter the data.
-
 ```php
+require "vendor/autoload.php";
+
+use Simsoft\DataFlow\DataFlow;
+
 (new DataFlow())
     ->from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     ->filter(function($num) {
@@ -78,7 +76,7 @@ Filter method help you to filter the data.
         return $num % 2 === 0;
     })
     ->load(function($num) {
-        echo $num . "\n";
+        echo $num . PHP_EOL;
     })
     ->run();
 
@@ -112,7 +110,7 @@ Mapping method allow you to convey the data to another format.
         'senior' => fn($data) => $data['age'] > 30 ? 'Yes' : 'No',
     ])
     ->load(function($data) {
-        echo $data['full_name'] . ' is ' . $data['age'] . ' years old. ' . $data['senior'] . "\n";
+        echo $data['full_name'] . ' is ' . $data['age'] . ' years old. ' . $data['senior'] . PHP_EOL;
     })
     ->run();
 
@@ -147,7 +145,7 @@ $payload = new Payload(['total_items' => 0, 'total_price' => 0.00]);
         return $data;
     })
     ->load(function($data) {
-        echo $data['item_name'] . ': ' . $data['qty'] . ' x ' . $data['price'] . "\n";
+        echo $data['item_name'] . ': ' . $data['qty'] . ' x ' . $data['price'] . PHP_EOL;
     })
     ->run($payload); // retrieve the payload.
 
@@ -177,7 +175,7 @@ $flow1 = (new DataFlow())
         return $num * 3;
     })
     ->load(function($num) {
-        echo $num . "\n";
+        echo $num . PHP_EOL;
     })
     ->run();
 
@@ -189,8 +187,10 @@ $flow1 = (new DataFlow())
 
 ## Advanced Usage
 
-1. [Useful Processors](docs/PROCESSORS.md)
-2. [Customized ETL Processor](docs/CUSTOMIZED_PROCESSOR.md)
+1. [Using Closure](docs/USING_CLOSURE.md)
+2. [Useful Processors](docs/PROCESSORS.md)
+3. [Customized ETL Processor](docs/CUSTOMIZED_PROCESSOR.md)
+4. [Controllable Data Flow](docs/CONTROLLABLE_DATAFLOW.md)
 
 ## License
 

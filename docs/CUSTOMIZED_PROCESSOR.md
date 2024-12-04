@@ -3,8 +3,8 @@
 Create your own ETL processor.
 
 1) Extractor - Extract data from data source.
-2) Transformer - Transform/ modify data in the pipeline to produce cleaned data.
-3) Loader - Load the cleaned data into database, csv, text, etc.
+2) Transformer - Modify/ filter/ calculate/ translate data in the pipeline.
+3) Loader - Load data into database, csv, text, etc.
 
 ### Example Customized Extractor.
 

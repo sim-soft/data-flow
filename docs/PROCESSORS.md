@@ -29,6 +29,30 @@ $dataSource = fn() => yield from range(1, 10);
     ->run();
 ```
 
+Or simply passing iterable data source directly.
+
+```php
+use Simsoft\DataFlow\DataFlow;
+
+// From array.
+(new DataFlow())
+    ->from([1, 2, 3])
+    ->load(function($num) {
+        echo $num . "\n";
+    })
+    ->run();
+
+// From iterator
+$dataSource = fn() => yield from range(1, 10);
+
+(new DataFlow())
+    ->from($dataSource())
+    ->load(function($num) {
+        echo $num . "\n";
+    })
+    ->run();
+```
+
 ## SpreadsheetExtractor
 
 Extract data from spreadsheet file.
@@ -150,7 +174,7 @@ $query = User::find()->where('gender', 'male')->where('age', '>', 20);
 
 ## SpreadsheetLoader
 
-Load data to spreadsheet file.
+Load data into spreadsheet file using **mapping** method.
 
 ```php
 use Simsoft\DataFlow\DataFlow;
@@ -160,12 +184,38 @@ $query = User::find()->where('gender', 'male')->where('age', '>', 20);
 
 (new DataFlow())
     ->from(new ActiveQueryExtractor($query))
-    ->map([
-        'name' => fn($model) => $model->name,
-        'age' => fn($model) => $model->age,
-        'gender' => fn($model) => $model->gender,
-        'gender' => fn($model) => $model->email,
+    ->map([  // Array key will be the header.
+        'Name' => fn(User $model) => $model->name,
+        'Gender' => fn(User $model) => $model->gender,
+        'Age' => fn(User $model) => $model->age,
+        'Email' => fn(User $model) => $model->email,
     ])
-    ->load(new SpreadsheetLoader('/path/to/file.xlsx'))
+    ->load(new SpreadsheetLoader('/path/to/users.xlsx'))
     ->run();
 ```
+
+Load data into spreadsheet file using **callback** method.
+
+```php
+use Simsoft\DataFlow\DataFlow;
+use Simsoft\DataFlow\Loaders\SpreadsheetLoader;
+
+$query = User::find()->where('gender', 'male')->where('age', '>', 20);
+
+(new DataFlow())
+    ->from(new ActiveQueryExtractor($query))
+    ->transform(function(User $model) {
+        return [  // Array key will be the header.
+            'Name' => $model->name,
+            'Gender' => $model->gender,
+            'Age' => $model->age,
+            'Email' => $model->email,
+        ]
+    })
+    ->load(new SpreadsheetLoader('/path/to/users.xlsx'))
+    ->run();
+```
+
+**users.xlsx**
+
+![users.xlsx](img/uses-xlsx-sample-result.PNG)

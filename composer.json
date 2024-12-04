@@ -1,6 +1,6 @@
 {
   "name": "simsoft/data-flow",
-  "description": "A simple ETL tool.",
+  "description": "A simple ETL pipeline data flow.",
   "keywords": [
     "etl",
     "data flow",

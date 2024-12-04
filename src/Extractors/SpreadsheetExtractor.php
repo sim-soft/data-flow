@@ -23,19 +23,19 @@ class SpreadsheetExtractor extends Extractor
     /** @var string|null Select sheet name. */
     protected ?string $sheetName = null;
 
+    /** @var bool File from data frame. Default: false. */
+    protected bool $fromDataFrame = false;
+
     /**
      * Constructor.
      *
-     * @param string $filePath File path.
+     * @param string|null $filePath File path.
      * @throws Exception
      */
-    final public function __construct(protected string $filePath)
+    final public function __construct(protected ?string $filePath = null)
     {
-        if (!file_exists($this->filePath)) {
-            throw new Exception("File not found: $filePath");
-        }
-
-        $this->spreadsheet = IOFactory::load($filePath, IReader::READ_DATA_ONLY | IReader::IGNORE_EMPTY_CELLS);
+        $this->fromDataFrame = $filePath === null;
+        $filePath && $this->loadFilepath($filePath);
     }
 
     /**
@@ -48,6 +48,23 @@ class SpreadsheetExtractor extends Extractor
     public static function from(string $filePath): static
     {
         return new static($filePath);
+    }
+
+    /**
+     * Load file path.
+     *
+     * @param string $filePath
+     * @return void
+     * @throws Exception
+     */
+    protected function loadFilepath(string $filePath): void
+    {
+        if (!file_exists($filePath)) {
+            throw new Exception("File not found: $filePath");
+        }
+
+        $this->spreadsheet = IOFactory::load($filePath, IReader::READ_DATA_ONLY | IReader::IGNORE_EMPTY_CELLS);
+        $this->headers = [];
     }
 
     /**
@@ -90,9 +107,11 @@ class SpreadsheetExtractor extends Extractor
     }
 
     /**
-     * {@inheritdoc}
+     * Read file row.
+     *
+     * @return Iterator
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    protected function toArray(): Iterator
     {
         foreach ($this->getSheetRow() as $rowIndex => $row) {
             $data = [];
@@ -107,5 +126,29 @@ class SpreadsheetExtractor extends Extractor
 
             yield $this->headers ? array_combine($this->headers, $data) : $data;
         }
+    }
+
+    /**
+     * Process dataframe.
+     *
+     * @throws Exception
+     */
+    protected function processDataFrame(Iterator $dataFrame): Iterator
+    {
+        foreach ($dataFrame as $filepath) {
+            $this->loadFilepath($filepath);
+            yield from $this->toArray();
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     * @throws Exception
+     */
+    public function __invoke(?Iterator $dataFrame): Iterator
+    {
+        yield from $this->fromDataFrame && $dataFrame !== null
+            ? $this->processDataFrame($dataFrame)
+            : $this->toArray();
     }
 }

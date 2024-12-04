@@ -10,7 +10,9 @@
   "type": "library",
   "require": {
     "php": ">=8.2",
-    "phpoffice/phpspreadsheet": "*"
+    "phpoffice/phpspreadsheet": "*",
+    "league/flysystem": "^3.29",
+    "symfony/cache": "^7.2"
   },
   "license": "MIT",
   "autoload": {

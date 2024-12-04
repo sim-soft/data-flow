@@ -33,6 +33,38 @@ use Simsoft\DataFlow\DataFlow;
 // 6
 ```
 
+## Limit
+
+Limit data output.
+
+```php
+require "vendor/autoload.php";
+
+use Simsoft\DataFlow\DataFlow;
+
+(new DataFlow())
+    ->from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    ->transform(function($num) {
+        return $num * 2;
+    })
+    ->limit(5)  // output only 5 data.
+    ->load(function($num) {
+        echo $num . "\n";
+    })
+    ->run();
+
+// Output:
+// 2
+// 4
+// 6
+// 8
+// 10
+```
+
+Chunk
+
+```
+
 ## Filter
 
 Filter method help you to filter the data.
@@ -157,7 +189,8 @@ $flow1 = (new DataFlow())
 
 ## Advanced Usage
 
-[Customized ETL Processor](docs/CUSTOMIZED_PROCESSOR.md)
+1. [Useful Processors](docs/PROCESSORS.md)
+2. [Customized ETL Processor](docs/CUSTOMIZED_PROCESSOR.md)
 
 ## License
 

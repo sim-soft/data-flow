@@ -5,11 +5,14 @@ namespace Simsoft\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Exception;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Style;
 use PhpOffice\PhpSpreadsheet\Worksheet\ColumnDimension;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Writer\IWriter;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Psr\SimpleCache\CacheInterface;
 use Throwable;
 
 /**
@@ -31,6 +34,7 @@ class SpreadsheetIO
      * Constructor
      */
     public function __construct(
+        protected string          $docType = 'Xlsx',
         protected ?string $title = null,
         protected ?string $creator = null,
         protected ?string $company = null,
@@ -39,9 +43,14 @@ class SpreadsheetIO
         protected ?string $category = null,
         protected ?string $lastModifiedBy = null,
         protected ?string $manager = null,
-        protected ?bool   $readOnly = false
+        protected ?bool           $readOnly = false,
+        protected ?CacheInterface $cache = null,
     )
     {
+        if ($cache) {
+            Settings::setCache($cache);
+        }
+
         $this->spreadsheet = new Spreadsheet();
 
         if ($title) {
@@ -83,6 +92,18 @@ class SpreadsheetIO
     }
 
     /**
+     * Load existing spreadsheet path.
+     *
+     * @param string $filePath
+     * @return $this
+     */
+    public function load(string $filePath): static
+    {
+        $this->spreadsheet = IOFactory::load($filePath);
+        return $this;
+    }
+
+    /**
      * Is current sheet has headers.
      *
      * @return bool
@@ -96,12 +117,29 @@ class SpreadsheetIO
      * Add header names at the first row.
      *
      * @param ...$headerNames
-     * @return SpreadsheetIO
+     * @return $this
      */
     public function header(...$headerNames): static
     {
         $this->addRow($headerNames, ['font' => ['bold' => true]]);
         $this->sheetHeader[$this->spreadsheet->getActiveSheetIndex()] = $headerNames;
+        return $this;
+    }
+
+    /**
+     * Set active sheet name.
+     *
+     * @param string $name
+     * @param int|null $sheetIndex
+     * @return $this
+     */
+    public function sheetName(string $name, ?int $sheetIndex = null): static
+    {
+        if (!$this->spreadsheet->sheetNameExists($name)) {
+            $this->createSheet($sheetIndex)->setTitle($name);
+        }
+
+        $this->spreadsheet->setActiveSheetIndexByName($name);
         return $this;
     }
 
@@ -123,7 +161,7 @@ class SpreadsheetIO
                 foreach ($data as $column => $value) {
                     //$coordinate = $this->getColumnLabel($column) . $row;
                     $coordinate = [$column + 1, $row];
-                    $this->spreadsheet->getActiveSheet()->setCellValue($coordinate, $value);
+                    $this->getActiveSheet()->setCellValue($coordinate, $value);
                     if ($style) {
                         $this->setStyle($coordinate, $style);
                     }
@@ -138,7 +176,7 @@ class SpreadsheetIO
                 foreach ($data as $header => $value) {
                     //$coordinate = $this->getColumnLabel($headers[$header]) . $row;
                     $coordinate = [$headers[$header] + 1, $row];
-                    $this->spreadsheet->getActiveSheet()->setCellValue($coordinate, $value);
+                    $this->getActiveSheet()->setCellValue($coordinate, $value);
                     if ($style) {
                         $this->setStyle($coordinate, $style);
                     }
@@ -207,29 +245,26 @@ class SpreadsheetIO
      */
     public function setValue(int $column, int $row, mixed $value): void
     {
-        $this->spreadsheet->getActiveSheet()->setCellValue("$column$row", $value);
+        $this->getActiveSheet()->setCellValue("$column$row", $value);
     }
 
 
     /**
      * @return Worksheet
      */
-    public function getNewSheet(): Worksheet
+    public function getActiveSheet(): Worksheet
     {
         return $this->spreadsheet->getActiveSheet();
     }
 
     /**
+     * Get writer for save
      *
-     * @param int $col
-     * @param int $row
-     * @param mixed $value
-     * @return void
-     * @deprecated Replaced by setValue(int $column, int $row, mixed $value).
+     * @return IWriter
      */
-    public function setValueByColumnAndRow(int $col, int $row, mixed $value): void
+    public function getWriter(): IWriter
     {
-        $this->getNewSheet()->setCellValue([$col + 1, $row], $value);
+        return IOFactory::createWriter($this->spreadsheet, $this->docType);
     }
 
     /**
@@ -260,7 +295,7 @@ class SpreadsheetIO
         header('Content-Disposition: attachment;filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
         try {
-            IOFactory::createWriter($this->spreadsheet, 'Xlsx')->save('php://output');
+            $this->getWriter()->save('php://output');
             exit();
         } catch (Throwable $e) {
             error_log($e->getMessage());
@@ -344,75 +379,58 @@ class SpreadsheetIO
     public function setStyle($cellCoordinate, $style = []): void
     {
         if ($style) {
-            $this->spreadsheet->getActiveSheet()->getStyle($cellCoordinate)->applyFromArray($style);
+            $this->getActiveSheet()->getStyle($cellCoordinate)->applyFromArray($style);
         }
-    }
-
-    /**
-     * @throws Exception
-     */
-    public function setColumnStyle($columnCoordinate, $style = []): void
-    {
-        if ($style) {
-            $this->spreadsheet->getActiveSheet()->getStyle($columnCoordinate)->applyFromArray($style);
-        }
-    }
-
-    public function getStyle(string $cellCoordinate): Style
-    {
-        return $this->getNewSheet()->getStyle($cellCoordinate);
     }
 
     public function getCell(string $coordinate): Cell
     {
-        return $this->getNewSheet()->getCell($coordinate);
+        return $this->getActiveSheet()->getCell($coordinate);
     }
 
     public function getColumnDimension(string $column): ColumnDimension
     {
-        return $this->getNewSheet()->getColumnDimension($column);
+        return $this->getActiveSheet()->getColumnDimension($column);
     }
 
-    public function setTitle(string $title): void
-    {
-        $this->getNewSheet()->setTitle($title);
-    }
-
+    /**
+     * Get new worksheet.
+     *
+     * @param int|null $sheetIndex
+     * @return Worksheet
+     */
     public function createSheet(?int $sheetIndex = null): Worksheet
     {
         return $this->spreadsheet->createSheet($sheetIndex);
     }
 
     /**
-     * Set active sheet.
-     *
-     * @param int $index Sheet index to be activated.
-     * @return $this
+     * @param string $title
+     * @return void
      */
-    public function activeSheet(int $index = 0): static
+    public function setSheetTitle(string $title): void
     {
-        try {
-            $this->spreadsheet->setActiveSheetIndex($index);
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-        }
-        return $this;
+        $this->getActiveSheet()->setTitle($title);
     }
 
     /**
      * Set active sheet.
      *
-     * @param int $index
-     * @return void
-     * @deprecated Replaced by activeSheet(int $index = 0).
+     * @param int|string $index Sheet index/ sheet name to be activated.
+     * @return $this
      */
-    public function setActiveSheetIndex(int $index): void
+    public function setActiveSheet(int|string $index = 0): static
     {
         try {
-            $this->spreadsheet->setActiveSheetIndex($index);
+            if (is_string($index)) {
+                $this->spreadsheet->setActiveSheetIndexByName($index);
+            } elseif (is_numeric($index)) {
+                $this->spreadsheet->setActiveSheetIndex($index);
+            }
         } catch (Throwable $e) {
             error_log($e->getMessage());
         }
+        return $this;
     }
 
     /**
@@ -422,6 +440,6 @@ class SpreadsheetIO
      */
     public function getHighestRow(): int
     {
-        return $this->getNewSheet()->getHighestRow();
+        return $this->getActiveSheet()->getHighestRow();
     }
 }

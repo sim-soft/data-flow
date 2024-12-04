@@ -26,17 +26,18 @@ trait CallableDataFrame
     {
         if ($dataFrame !== null) {
             foreach ($dataFrame as $key => $data) {
-                $fail = null;
+                $exception = null;
                 $feedback = call_user_func_array($callback, [
                     &$data,
-                    $key,
-                    function (string $failMessage) use (&$fail) {
-                        $fail = $failMessage;
+                    &$key,
+                    function (string $message) use (&$exception) {
+                        $exception = $message;
+                        return Signal::Stop;
                     }
                 ]);
 
-                if (is_string($fail)) {
-                    throw new Exception($fail);
+                if (is_string($exception)) {
+                    throw new Exception($exception);
                 }
 
                 if ($feedback === Signal::Next) {
@@ -52,7 +53,7 @@ trait CallableDataFrame
                     continue;
                 }
 
-                yield $feedback;
+                yield $key => $feedback ?? $data;
             }
         }
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Simsoft\DataFlow\Extractor;
+namespace Simsoft\DataFlow\Extractors;
 
 use Simsoft\DataFlow\Extractor;
 use Iterator;

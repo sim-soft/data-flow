@@ -9,49 +9,59 @@ Create your own ETL processor.
 ### Example Customized Extractor.
 
 ```php
+use App\Model\User;
 use Simsoft\DataFlow\Extractor;
 use Iterator;
 
-// Extract your data source
-class NameExtractor extends Extractor
+/**
+* Extract birthday users from database.
+*/
+class BirthdayUsersExtractor extends Extractor
 {
-    /**
-    * Constructor.
-    *
-    * @param array $dataSource
-    */
-    public function __construct(protected array $dataSource)
-    {
-
-    }
-
     /**
     * {@inheritdoc}
     */
     public function __invoke(?Iterator $dataFrame): Iterator
     {
-        yield from $this->dataSource;
+        // query birthday users from database.
+        yield from User::find()
+            ->where('birthday', date_create()->format('Y-m-d'))
+            ->get();
     }
 }
 ```
 
 ### Example Customized Transformer.
-
 ```php
 use Simsoft\DataFlow\Transformer;
 use Iterator;
 
-// Transform your data
-class GreetingTransformer extends Transformer
+/**
+* Prepare birthday greeting message.
+ */
+class BirthdayGreetingTransformer extends Transformer
 {
     /**
     * {@inheritdoc}
     */
     public function __invoke(?Iterator $dataFrame): Iterator
     {
-        foreach ($dataFrame as $name) {
-            // transform data here
-            yield "Hi, $name";
+        foreach ($dataFrame as $model) {
+            $name = ucwords("$model->first_name $model->last_name");
+
+            yield (object) [
+                'headers' => 'From: admin@domain.com',
+                'email' => $model->email,
+                'subject' => "Happy Birthday, $name",
+                'message' => <<<GREETING
+Dear $name,
+Wishing you a wonderful birthday filled with happiness and joy!
+Have an amazing day!
+
+Best regards
+Admin
+GREETING,
+            ];
         }
     }
 }
@@ -63,16 +73,23 @@ class GreetingTransformer extends Transformer
 use Simsoft\DataFlow\Loader;
 use Iterator;
 
-// Load your data to destination
-class DisplayLoader extends Loader
+/**
+* Mail birthday greeting to user.
+ */
+class EmailMessageLoader extends Loader
 {
     /**
     * {@inheritdoc}
     */
     public function __invoke(?Iterator $dataFrame): Iterator
     {
-        foreach ($dataFrame as $data) {
-            echo $data;
+        foreach ($dataFrame as $mail) {
+            if (mail($mail->email, $mail->subject, $mail->message, $mail->headers)) {
+                $this->info("Mail to $email->email sent successfully.");
+                continue;
+            }
+
+            error_log("Mail birthday greeting to $email->email failed.");
         }
     }
 }
@@ -84,14 +101,14 @@ class DisplayLoader extends Loader
 use Simsoft\DataFlow\DataFlow;
 
 (new DataFlow())
-    ->from(new NameExtractor(['John', 'Jane', 'Peter', 'Philip']))            // use your custom extractor.
-    ->transform(new GreetingTransformer())      // use your custom transformer.
-    ->load(new DisplayLoader())                   // use your custom loader.
+    ->from(new BirthdayUsersExtractor())            // use your custom extractor.
+    ->transform(new BirthdayGreetingTransformer())  // use your custom transformer.
+    ->load(new EmailMessageLoader())                     // use your custom loader.
     ->run();
 
 // Output:
-// Hi, John
-// Hi, Jane
-// Hi, Peter
-// Hi, Philip
+// Mail to EMAIL sent successfully.
+// Mail to EMAIL sent successfully.
+// Mail to EMAIL sent successfully.
+// Mail to EMAIL sent successfully.
 ```

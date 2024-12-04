@@ -2,6 +2,7 @@
 
 namespace Simsoft\DataFlow;
 
+use Simsoft\DataFlow\Enums\Signal;
 use Simsoft\DataFlow\Extractors\IterableExtractor;
 use Simsoft\DataFlow\Loaders\VisualLoader;
 use Simsoft\DataFlow\Traits\DataFrame;
@@ -126,6 +127,20 @@ class DataFlow
     }
 
     /**
+     * Limit data
+     *
+     * @param int $limit
+     * @return $this
+     * @throws Exception
+     */
+    public function limit(int $limit): static
+    {
+        return $this->transform(function (mixed $data) use (&$limit) {
+            return --$limit < 0 ? Signal::Stop : $data;
+        });
+    }
+
+    /**
      * Set loader.
      *
      * @param Processor|Closure ...$loaders
@@ -176,37 +191,25 @@ class DataFlow
     }
 
     /**
-     * Capture payload.
-     *
-     * @param Payload|null $payload
-     * @return $this
-     */
-    public function capture(?Payload &$payload): static
-    {
-        $payload = $this->getPayload();
-        return $this;
-    }
-
-    /**
      * Print info line.
      *
-     * @param string $string
+     * @param string $message
      * @return void
      */
-    protected function info(string $string): void
+    protected function info(string $message): void
     {
-        print $string . "\n";
+        print $message . PHP_EOL;
     }
 
     /**
      * Run flow
      *
-     * @param mixed|null $payload
+     * @param Payload|null $payload If provided, the payload will be captured.
      * @return void
      */
-    public function run(mixed &$payload = null): void
+    public function run(?Payload &$payload = null): void
     {
-        $this->capture($payload);
+        $payload = $this->getPayload();
         if ($iterable = $this->getDataFrame()) {
             iterator_apply($iterable, fn() => true, array($iterable));
         }

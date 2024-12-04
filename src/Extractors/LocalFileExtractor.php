@@ -30,7 +30,8 @@ class LocalFileExtractor extends Extractor
 
     /**
      * Constructor.
-     * @param string $directoryPath
+     *
+     * @param string $directoryPath Directory path.
      * @param string $location
      */
     public function __construct(protected string $directoryPath = DIRECTORY_SEPARATOR, protected string $location = '/')

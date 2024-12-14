@@ -120,44 +120,6 @@ Mapping method allow you to convey the data to another format.
 // John Smith is 50 years old. Yes
 // Jane Smith is 60 years old. Yes
 ```
-
-## Payload
-
-Payload is a data that will be passed to the next step. Each step can modify the
-payload.
-
-```php
-use Simsoft\DataFlow\Payload;
-
-// Initialize the payload.
-$payload = new Payload(['total_items' => 0, 'total_price' => 0.00]);
-
-(new DataFlow($payload))
-    ->from([
-        ['item_name' => 'Coffee', 'qty' => 2, 'price' => 20],
-        ['item_name' => 'Tea', 'qty' => 1, 'price' => 10],
-        ['item_name' => 'Milk', 'qty' => 3, 'price' => 30],
-    ])
-    ->transform(function($data) { // modify payload.
-        $payload = $this->getPayload();
-        $payload['total_items'] += $data['qty'];
-        $payload['total_price'] += $data['qty'] * $data['price'];
-        return $data;
-    })
-    ->load(function($data) {
-        echo $data['item_name'] . ': ' . $data['qty'] . ' x ' . $data['price'] . PHP_EOL;
-    })
-    ->run($payload); // retrieve the payload.
-
-echo $payload['total_items'] . ' items, $' . $payload['total_price'];
-
-// Output:
-// Coffee: 2 x 20
-// Tea: 1 x 10
-// Milk: 3 x 30
-// 6 items, $110
-```
-
 ## Flow Continuation
 
 Connecting flows into a chain.
@@ -187,10 +149,11 @@ $flow1 = (new DataFlow())
 
 ## Advanced Usage
 
-1. [Using Closure](docs/USING_CLOSURE.md)
-2. [Useful Processors](docs/PROCESSORS.md)
-3. [Customized ETL Processor](docs/CUSTOMIZED_PROCESSOR.md)
-4. [Controllable Data Flow](docs/CONTROLLABLE_DATAFLOW.md)
+1. [Using Closure](docs/01-USING_CLOSURE.md)
+2. [Useful Processors](docs/02-USEFUL_PROCESSORS.md)
+3. [Customized ETL Processor](docs/03-CUSTOMIZED_PROCESSOR.md)
+4. [Create Reusable Data Flow](docs/04-CONTROLLABLE_DATAFLOW.md)
+5. [Using Payload](docs/05-USING_PAYLOAD.md)
 
 ## License
 

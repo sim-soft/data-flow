@@ -10,6 +10,7 @@ Create your own ETL processor.
 
 ```php
 use App\Model\User;
+use DateTimeImmutable;
 use Simsoft\DataFlow\Extractor;
 use Iterator;
 
@@ -19,13 +20,22 @@ use Iterator;
 class BirthdayUsersExtractor extends Extractor
 {
     /**
+    * Constructor.
+    * @param DateTimeImmutable $dob
+    */
+    public function __construct(protected DateTimeImmutable $dob)
+    {
+
+    }
+
+    /**
     * {@inheritdoc}
     */
     public function __invoke(?Iterator $dataFrame): Iterator
     {
         // query birthday users from database.
         yield from User::find()
-            ->where('birthday', date_create()->format('Y-m-d'))
+            ->where('birthday', $this->dob->format('Y-m-d'))
             ->get();
     }
 }
@@ -46,7 +56,9 @@ class BirthdayGreetingTransformer extends Transformer
     */
     public function __invoke(?Iterator $dataFrame): Iterator
     {
+        // Expecting iterable $model from extractor.
         foreach ($dataFrame as $model) {
+
             $name = ucwords("$model->first_name $model->last_name");
 
             yield (object) [
@@ -83,12 +95,17 @@ class EmailMessageLoader extends Loader
     */
     public function __invoke(?Iterator $dataFrame): Iterator
     {
+        // Expecting iterable $mail object from transformer.
         foreach ($dataFrame as $mail) {
             if (mail($mail->email, $mail->subject, $mail->message, $mail->headers)) {
+
+                // Using info() method to output message.
                 $this->info("Mail to $email->email sent successfully.");
+
                 continue;
             }
 
+            yield $email; // passing failed email to next processor.
             error_log("Mail birthday greeting to $email->email failed.");
         }
     }
@@ -98,17 +115,29 @@ class EmailMessageLoader extends Loader
 ## Example Usage of Customized ETL Processor.
 
 ```php
+use App\Model\FailedEmail;
 use Simsoft\DataFlow\DataFlow;
 
-(new DataFlow())
-    ->from(new BirthdayUsersExtractor())            // use your custom extractor.
-    ->transform(new BirthdayGreetingTransformer())  // use your custom transformer.
-    ->load(new EmailMessageLoader())                     // use your custom loader.
-    ->run();
+try {
+
+    (new DataFlow())
+        ->from(new BirthdayUsersExtractor(date_create()))   // Retrieve birthday users from extractor.
+        ->transform(new BirthdayGreetingTransformer())      // Preparing birthday greeting message with transformer.
+        ->load(new EmailMessageLoader())                    // Delivery birthday greeting with loader.
+        ->load(function($email) {                           // Record failed emails.
+            $model = new FailedEmail();
+            $model->email = serialize($email);
+            $model->save();
+        })
+        ->run();
+
+} catch (Throwable $throwable) {
+    error_log($throwable->getMessage());
+}
 
 // Output:
-// Mail to EMAIL sent successfully.
-// Mail to EMAIL sent successfully.
-// Mail to EMAIL sent successfully.
-// Mail to EMAIL sent successfully.
+// Mail to johndoe@email.com sent successfully.
+// Mail to janedoe@email.com sent successfully.
+// Mail to peter@email.com sent successfully.
+// Mail to philiip@email.com sent successfully.
 ```

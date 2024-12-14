@@ -107,7 +107,7 @@ class SpreadsheetLoader extends Loader
             $this->spreadsheet->sheetName($this->sheetName, $this->sheetIndex);
         }
 
-        return $this->call($dataFrame, function (mixed $data, int $index) {
+        return $this->call($dataFrame, function (mixed $data) {
             if ($data instanceof Iterator) {
                 $count = 0;
                 foreach ($data as $row) {

@@ -9,6 +9,7 @@ use Simsoft\DataFlow\Extractors\IterableExtractor;
 use Simsoft\DataFlow\Loaders\Preview;
 use Simsoft\DataFlow\Loaders\Visualize;
 use Simsoft\DataFlow\Traits\DataFrame;
+use Simsoft\DataFlow\Traits\Macroable;
 use Simsoft\DataFlow\Transformers\Filter;
 use Simsoft\DataFlow\Transformers\Mapping;
 
@@ -17,7 +18,7 @@ use Simsoft\DataFlow\Transformers\Mapping;
  */
 class DataFlow
 {
-    use DataFrame;
+    use DataFrame, Macroable;
 
     /**
      * Constructor
@@ -175,17 +176,6 @@ class DataFlow
     public function visualize(string $format = Visualize::FORMAT_JSON): static
     {
         return $this->load(new Visualize($format));
-    }
-
-    /**
-     * Print info line.
-     *
-     * @param string $message
-     * @return void
-     */
-    protected function info(string $message): void
-    {
-        print $message . PHP_EOL;
     }
 
     /**

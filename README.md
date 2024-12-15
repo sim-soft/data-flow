@@ -154,6 +154,7 @@ $flow1 = (new DataFlow())
 3. [Customized ETL Processor](docs/03-CUSTOMIZED_PROCESSOR.md)
 4. [Create Reusable Data Flow](docs/04-CONTROLLABLE_DATAFLOW.md)
 5. [Using Payload](docs/05-USING_PAYLOAD.md)
+6. [Macro & Mixin](docs/06-MACRO_AND_MIXIN.md)
 
 ## License
 

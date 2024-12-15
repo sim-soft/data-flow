@@ -23,9 +23,6 @@ class Preview extends Loader
     {
         return $this->call($dataFrame, function (mixed $data, mixed $index) {
 
-            print 'Payload: ';
-            var_dump($this->getPayload());
-
             if ($data instanceof Iterator) {
                 foreach ($data as $rowIndex => $row) {
                     print "Key: ";

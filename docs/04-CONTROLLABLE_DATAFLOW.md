@@ -78,7 +78,7 @@ try {
 
     $flow = new UserReminderFlow();
 
-    match($userType) { // decide which type of users to export.
+    match($userType) { // Control which type of users to export.
         'expiring' => $flow->fromExpiringUsers($expiryDate),
         'inactive' => $flow->fromInactiveUsers(),
         default => throw new Exception('Invalid user type'),

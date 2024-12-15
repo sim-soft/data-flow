@@ -9,7 +9,7 @@ use Simsoft\DataFlow\Extractors\IterableExtractor;
 use Simsoft\DataFlow\Loaders\Preview;
 use Simsoft\DataFlow\Loaders\Visualize;
 use Simsoft\DataFlow\Traits\DataFrame;
-use Simsoft\DataFlow\Traits\PayloadHandling;
+use Simsoft\DataFlow\Traits\Macroable;
 use Simsoft\DataFlow\Transformers\Filter;
 use Simsoft\DataFlow\Transformers\Mapping;
 
@@ -18,17 +18,14 @@ use Simsoft\DataFlow\Transformers\Mapping;
  */
 class DataFlow
 {
-    use DataFrame, PayloadHandling;
+    use DataFrame, Macroable;
 
     /**
      * Constructor
      *
-     * @param Payload|null $payload Payload.
      */
-    final public function __construct(?Payload $payload = null)
+    final public function __construct()
     {
-        $this->setPayload($payload);
-
         $this->init();
     }
 
@@ -57,12 +54,10 @@ class DataFlow
             } elseif (is_iterable($extractor)) {
                 $extractor = new IterableExtractor($extractor);
             } elseif ($extractor instanceof DataFlow) {
-                $this->setPayload($extractor->getPayload());
                 $this->setDataFrame($extractor->getDataFrame());
                 continue;
             }
 
-            $extractor->setPayload($this->getPayload());
             $this->setDataFrame($extractor($this->getDataFrame()));
         }
         return $this;
@@ -82,7 +77,6 @@ class DataFlow
                 $transformer = new CallableProcessor($transformer);
             }
 
-            $transformer->setPayload($this->getPayload());
             $this->setDataFrame($transformer($this->getDataFrame()));
         }
 
@@ -151,7 +145,6 @@ class DataFlow
                 $loader = new CallableProcessor($loader);
             }
 
-            $loader->setPayload($this->getPayload());
             $this->setDataFrame($loader($this->getDataFrame()));
         }
         return $this;
@@ -186,25 +179,12 @@ class DataFlow
     }
 
     /**
-     * Print info line.
-     *
-     * @param string $message
-     * @return void
-     */
-    protected function info(string $message): void
-    {
-        print $message . PHP_EOL;
-    }
-
-    /**
      * Run flow
      *
-     * @param Payload|null $payload If provided, the payload will be captured.
      * @return void
      */
-    public function run(?Payload &$payload = null): void
+    public function run(): void
     {
-        $payload = $this->getPayload();
         if ($iterable = $this->getDataFrame()) {
             iterator_apply($iterable, fn() => true, array($iterable));
         }

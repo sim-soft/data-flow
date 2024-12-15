@@ -25,9 +25,12 @@ trait CallableDataFrame
     public function call(?Iterator $dataFrame, Closure $callback): Iterator
     {
         if ($dataFrame !== null) {
+
+            $callback = Closure::bind($callback, $this, get_called_class());
+
             foreach ($dataFrame as $key => $data) {
                 $exception = null;
-                $feedback = call_user_func_array($callback, [
+                $feedback = call_user_func_array($callback, [ // @phpstan-ignore argument.type
                     &$data,
                     &$key,
                     function (string $message) use (&$exception) {

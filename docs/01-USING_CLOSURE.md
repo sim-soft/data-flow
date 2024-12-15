@@ -16,20 +16,21 @@ The closure is expected to **return the data or enum Signal**.
 ```php
 require "vendor/autoload.php";
 
+use Closure;
 use Simsoft\DataFlow\DataFlow;
 use Throwable;
 
 try {
     (new DataFlow())
         ->from(range(1, 20))
-        ->load(function(int $data, $key, $exception){
+        ->transform(function(int $data, $key, Closure $exception){
             if ($data >= 5) {
                 return $exception('Throw exception at 5');
             }
 
             return $data * 2;
         })
-        ->load(function($data, $key, $exception) {
+        ->load(function($data, $key, Closure $exception) {
             print "Index: $key, Data: $data" . PHP_EOL;
         })
         ->run();
@@ -54,19 +55,20 @@ Using "Next" signal.
 ```php
 require "vendor/autoload.php";
 
+use Closure;
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Enums\Signal;
 
 (new DataFlow())
         ->from(range(1, 10))
-        ->transform(function(int $data, $key){
+        ->transform(function(int $data, $key, Closure $exception){
             if (in_array($key, [2, 8])) {
                 return Signal::Next;
             }
 
             return $data;
         })
-        ->load(function($data, $key, $exception) {
+        ->load(function($data, $key, Closure $exception) {
             print "Index: $key, Data: $data" . PHP_EOL;
         })
         ->run();
@@ -92,14 +94,14 @@ use Simsoft\DataFlow\Enums\Signal;
 
 (new DataFlow())
         ->from(range(1, 10))
-        ->transform(function(int $data, $key){
+        ->transform(function(int $data, $key, Closure $exception){
             if ($key == 5)) {
                 return Signal::Stop;
             }
 
             return $data;
         })
-        ->load(function($data, $key, $exception) {
+        ->load(function($data, $key, Closure $exception) {
             print "Index: $key, Data: $data" . PHP_EOL;
         })
         ->run();

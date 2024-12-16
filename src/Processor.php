@@ -11,4 +11,29 @@ use Simsoft\DataFlow\Traits\Macroable;
 abstract class Processor implements Flowable
 {
     use Macroable;
+
+    protected DataFlow $flow;
+
+
+    /**
+     * Set current flow.
+     *
+     * @param DataFlow $flow
+     * @return $this
+     */
+    public function setFlow(DataFlow &$flow): static
+    {
+        $this->flow = $flow;
+        return $this;
+    }
+
+    /**
+     * Get current flow object.
+     *
+     * @return DataFlow
+     */
+    public function getFlow(): DataFlow
+    {
+        return $this->flow;
+    }
 }

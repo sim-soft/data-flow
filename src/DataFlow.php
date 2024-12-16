@@ -58,6 +58,7 @@ class DataFlow
                 continue;
             }
 
+            $extractor->setFlow($this);
             $this->setDataFrame($extractor($this->getDataFrame()));
         }
         return $this;
@@ -77,6 +78,7 @@ class DataFlow
                 $transformer = new CallableProcessor($transformer);
             }
 
+            $transformer->setFlow($this);
             $this->setDataFrame($transformer($this->getDataFrame()));
         }
 
@@ -145,6 +147,7 @@ class DataFlow
                 $loader = new CallableProcessor($loader);
             }
 
+            $loader->setFlow($this);
             $this->setDataFrame($loader($this->getDataFrame()));
         }
         return $this;

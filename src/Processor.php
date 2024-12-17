@@ -12,8 +12,8 @@ abstract class Processor implements Flowable
 {
     use Macroable;
 
-    protected DataFlow $flow;
-
+    /** @var DataFlow The current flow object. */
+    private DataFlow $flow;
 
     /**
      * Set current flow.

@@ -28,18 +28,18 @@ class Chunk extends Transformer
     public function __invoke(?Iterator $dataFrame): Iterator
     {
         if ($dataFrame) {
-            $currentChunk = []; // Temporary array to hold items
+            $chunk = []; // Temporary array to hold items
 
             foreach ($dataFrame as $item) {
-                $currentChunk[] = $item; // Add item to the current chunk
-                if (count($currentChunk) === $this->chunkSize) {
-                    yield $currentChunk; // Add the chunk to the result
-                    $currentChunk = []; // Reset the current chunk
+                $chunk[] = $item; // Add item to the current chunk
+                if (count($chunk) === $this->chunkSize) {
+                    yield $chunk; // Add the chunk to the result
+                    $chunk = []; // Reset the current chunk
                 }
             }
 
-            if (!empty($currentChunk)) {
-                yield $currentChunk; // Add the remaining items, if any
+            if ($chunk) {
+                yield $chunk; // Add the remaining items, if any
             }
         }
     }

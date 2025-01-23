@@ -3,6 +3,7 @@
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Simsoft\DataFlow\DataFlow;
+use Simsoft\DataFlow\Transformers\Chunk;
 
 /**
  * FlowTest
@@ -27,6 +28,16 @@ class FlowTest extends TestCase
                 fn($name) => "Hi, $name",
                 ['Hi, John', 'Hi, Jane', 'Hi, Peter', 'Hi, Philip'],
             ],
+            'Chunk' => [
+                range(1, 10),
+                new Chunk(3),
+                [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]],
+            ],
+            'Chunk 2' => [
+                range(1, 10),
+                new Chunk(4),
+                [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10]],
+            ]
         ];
     }
 

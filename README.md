@@ -88,6 +88,26 @@ use Simsoft\DataFlow\DataFlow;
 // 10
 ```
 
+## Chunk
+
+Splitting data into smaller, manageable parts of a fixed size
+
+```php
+(new DataFlow())
+    ->from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    ->chunk(3) // set chunk size
+    ->load(function(array $chunk, $key) {
+        echo $key . '=' . json_encode($chunk, JSON_THROW_ON_ERROR) . PHP_EOL;
+    })
+    ->run();
+
+// Output:
+// 0=[1,2,3]
+// 1=[4,5,6]
+// 2=[7,8,9]
+// 3=[10]
+```
+
 ## Mapping
 
 Mapping method allow you to convey the data to another format.

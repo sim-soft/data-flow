@@ -11,6 +11,7 @@ use Simsoft\DataFlow\Loaders\Visualize;
 use Simsoft\DataFlow\Traits\DataFrame;
 use Simsoft\DataFlow\Traits\Macroable;
 use Simsoft\DataFlow\Transformers\Filter;
+use Simsoft\DataFlow\Transformers\Chunk;
 use Simsoft\DataFlow\Transformers\Mapping;
 
 /**
@@ -117,6 +118,18 @@ class DataFlow
     public function filter(Closure $callback): static
     {
         return $this->transform(new Filter($callback));
+    }
+
+    /**
+     * Chunk data into fixed size array.
+     *
+     * @param int $chunkSize Maximum data per group. Default: 20
+     * @return $this
+     * @throws Exception
+     */
+    public function chunk(int $chunkSize = 20): static
+    {
+        return $this->transform(new Chunk($chunkSize));
     }
 
     /**

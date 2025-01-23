@@ -33,7 +33,11 @@
     <rule ref="rulesets/codesize.xml/ExcessivePublicCount"/>
     <rule ref="rulesets/codesize.xml/TooManyFields"/>
     <rule ref="rulesets/codesize.xml/TooManyMethods"/>
-    <rule ref="rulesets/codesize.xml/TooManyPublicMethods"/>
+    <rule ref="rulesets/codesize.xml/TooManyPublicMethods">
+        <properties>
+            <property name="maxmethods" value="11"/>
+        </properties>
+    </rule>
     <rule ref="rulesets/codesize.xml/ExcessiveClassComplexity"/>
     <!--<rule ref="rulesets/controversial.xml/Superglobals" />-->
     <rule ref="rulesets/controversial.xml/CamelCaseClassName"/>

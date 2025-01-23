@@ -11,6 +11,9 @@ use ArrayAccess;
  */
 class Payload implements ArrayAccess
 {
+    /** @var mixed[] Initial attributes state. */
+    protected array $initAttributes = [];
+
     /**
      * Constructor.
      *
@@ -18,7 +21,7 @@ class Payload implements ArrayAccess
      */
     public function __construct(protected array $attributes = [])
     {
-
+        $this->initAttributes = $this->attributes;
     }
 
     /**
@@ -107,5 +110,16 @@ class Payload implements ArrayAccess
     public function getAttribute(string $name): mixed
     {
         return $this->attributes[$name] ?? null;
+    }
+
+    /**
+     * Reset to initial state.
+     *
+     * @return void
+     */
+    public function reset(): void
+    {
+        unset($this->attributes);
+        $this->attributes = $this->initAttributes;
     }
 }

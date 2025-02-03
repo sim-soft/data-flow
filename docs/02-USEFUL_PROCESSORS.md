@@ -59,17 +59,17 @@ Extract data from spreadsheet file.
 
 ```php
 use Simsoft\DataFlow\DataFlow;
-use Simsoft\DataFlow\Extractors\SpreadsheetExtractor;
+use Simsoft\DataFlow\Extractors\SpoutExtractor;
 
 (new DataFlow())
-    ->from(new SpreadsheetExtractor('/path/to/file.xlsx')) // or .xls, .csv
+    ->from(new SpoutExtractor('/path/to/file.xlsx')) // or .xls, .csv
     ->load(function(array $row) {
         echo $row['name'] . "\n";  // use header name as key to access row content.
     })
     ->run();
 ```
 
-## LocalFileExtractor
+## FileFinderExtractor
 
 Extract file and directory paths from a given directory.
 
@@ -77,10 +77,10 @@ Extract file and directory paths from a given directory.
 use League\Flysystem\DirectoryAttributes;
 use League\Flysystem\FileAttributes;
 use Simsoft\DataFlow\DataFlow;
-use Simsoft\DataFlow\Extractors\LocalFileExtractor;
+use Simsoft\DataFlow\Extractors\FileFinderExtractor;
 
 (new DataFlow())
-    ->from((new LocalFileExtractor('/path/to/directory'))->recursive()) // search recursively.
+    ->from((new FileFinderExtractor('/path/to/directory'))->recursive()) // search recursively.
     ->load(function(FileAttributes|DirectoryAttributes $file) {
         if ($file->isDir()) {
             echo 'Is directory: ' . $file->path() . "\n";
@@ -102,7 +102,7 @@ Extract file path only.
 
 ```php
 (new DataFlow())
-    ->from((new LocalFileExtractor('/path/to/directory'))->recursive()->fileOnly()) // get file only..
+    ->from((new FileFinderExtractor('/path/to/directory'))->recursive()->fileOnly()) // get file only..
     ->load(function(FileAttributess $file) {
         echo 'Is file' . $file->path() . "\n";
     })
@@ -118,7 +118,7 @@ Extract directory path only.
 
 ```php
 (new DataFlow())
-    ->from((new LocalFileExtractor('/path/to/directory'))->recursive()->directoryOnly()) // get file only..
+    ->from((new FileFinderExtractor('/path/to/directory'))->recursive()->directoryOnly()) // get file only..
     ->load(function(FileAttributess $file) {
         echo 'Is directory: ' . $file->path() . "\n";
     })
@@ -158,7 +158,7 @@ class User extends Model
     protected string|array $primaryKey = 'id';
 }
 
-$query = User::find()->where('gender', 'male')->where('age', '>', 20);
+$query = User::find()->where('status', 'active')->where('age', '>', 20);
 
 (new DataFlow())
     ->from(new ActiveQueryExtractor($query))
@@ -180,7 +180,7 @@ Load data into spreadsheet file using **mapping** method.
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Loaders\SpreadsheetLoader;
 
-$query = User::find()->where('gender', 'male')->where('age', '>', 20);
+$query = User::find()->where('status', 'active')->where('age', '>', 20);
 
 (new DataFlow())
     ->from(new ActiveQueryExtractor($query))
@@ -200,7 +200,7 @@ Load data into spreadsheet file using **callback** method.
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Loaders\SpreadsheetLoader;
 
-$query = User::find()->where('gender', 'male')->where('age', '>', 20);
+$query = User::find()->where('status', 'active')->where('age', '>', 20);
 
 (new DataFlow())
     ->from(new ActiveQueryExtractor($query))

@@ -9,11 +9,11 @@ use League\Flysystem\Local\LocalFilesystemAdapter;
 use Simsoft\DataFlow\Extractor;
 
 /**
- * LocalFileExtractor class.
+ * FileFinderExtractor class.
  *
  * Extract file/ directory path for a given directory.
  */
-class LocalFileExtractor extends Extractor
+class FileFinderExtractor extends Extractor
 {
     const PATH_TYPE_ALL = 1;
     const PATH_TYPE_FILE = 2;

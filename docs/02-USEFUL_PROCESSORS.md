@@ -59,10 +59,10 @@ Extract data from spreadsheet file.
 
 ```php
 use Simsoft\DataFlow\DataFlow;
-use Simsoft\DataFlow\Extractors\SpreadsheetExtractor;
+use Simsoft\DataFlow\Extractors\SpoutExtractor;
 
 (new DataFlow())
-    ->from(new SpreadsheetExtractor('/path/to/file.xlsx')) // or .xls, .csv
+    ->from(new SpoutExtractor('/path/to/file.xlsx')) // or .xls, .csv
     ->load(function(array $row) {
         echo $row['name'] . "\n";  // use header name as key to access row content.
     })
@@ -77,10 +77,10 @@ Extract file and directory paths from a given directory.
 use League\Flysystem\DirectoryAttributes;
 use League\Flysystem\FileAttributes;
 use Simsoft\DataFlow\DataFlow;
-use Simsoft\DataFlow\Extractors\LocalFileExtractor;
+use Simsoft\DataFlow\Extractors\FileFinderExtractor;
 
 (new DataFlow())
-    ->from((new LocalFileExtractor('/path/to/directory'))->recursive()) // search recursively.
+    ->from((new FileFinderExtractor('/path/to/directory'))->recursive()) // search recursively.
     ->load(function(FileAttributes|DirectoryAttributes $file) {
         if ($file->isDir()) {
             echo 'Is directory: ' . $file->path() . "\n";

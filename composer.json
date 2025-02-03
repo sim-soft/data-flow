@@ -17,6 +17,7 @@
   "license": "MIT",
   "autoload": {
     "psr-4": {
+      "Box\\Spout\\": "simsoft/box/spout/src/Spout/",
       "Simsoft\\DataFlow\\": "src",
       "Simsoft\\DB\\MySQL\\": "simsoft/db-mysql/src/",
       "Simsoft\\Spreadsheet\\": "simsoft/spreadsheet/src/"

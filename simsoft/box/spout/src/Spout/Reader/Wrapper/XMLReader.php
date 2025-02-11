@@ -83,7 +83,7 @@ class XMLReader extends \XMLReader
      * @see \XMLReader::read
      *
      */
-    public function read()
+    public function read(): bool
     {
         $this->useXMLInternalErrors();
 
@@ -119,11 +119,11 @@ class XMLReader extends \XMLReader
      * @see \XMLReader::next
      *
      */
-    public function next($localName = null)
+    public function next(?string $name = null): bool
     {
         $this->useXMLInternalErrors();
 
-        $wasNextSuccessful = parent::next($localName);
+        $wasNextSuccessful = parent::next($name);
 
         $this->resetXMLInternalErrorsSettingAndThrowIfXMLErrorOccured();
 

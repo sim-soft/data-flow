@@ -78,7 +78,7 @@ class SpoutExtractor extends Extractor
     /**
      * @inheritDoc
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         try {
             if ($this->headerExists) {

@@ -117,6 +117,7 @@ class SpoutIO
             foreach ($this->reader->getSheetIterator() as $sheet) {
                 if ($sheet->getIndex() === $sheetNameOrIndex || $sheet->getName() === $sheetNameOrIndex) {
                     $this->activeSheet = &$sheet;
+                    $this->headers = [];
                     break;
                 }
             }
@@ -156,7 +157,9 @@ class SpoutIO
             $data = [];
             if ($this->headers) {
                 foreach ($row->getCells() as $cellIndex => $cell) {
-                    $data[$this->headers[$cellIndex]] = $cell->getValue();
+                    if ($this->headers[$cellIndex] ?? false) {
+                        $data[$this->headers[$cellIndex]] = $cell->getValue();
+                    }
                 }
             } else {
                 foreach ($row->getCells() as $cell) {

@@ -29,7 +29,7 @@ class CallableProcessor extends Processor
      *
      * @throws Exception
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         return $this->call($dataFrame, $this->callback);
     }

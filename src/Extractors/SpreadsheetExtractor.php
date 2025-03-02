@@ -145,7 +145,7 @@ class SpreadsheetExtractor extends Extractor
      * {@inheritdoc}
      * @throws Exception
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         yield from $this->fromDataFrame && $dataFrame !== null
             ? $this->processDataFrame($dataFrame)

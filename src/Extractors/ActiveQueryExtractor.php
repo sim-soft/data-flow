@@ -79,7 +79,7 @@ class ActiveQueryExtractor extends Extractor
     /**
      * {@inheritdoc}
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         $collection = $this->query->each($this->size);
         if ($this->debugMode) {

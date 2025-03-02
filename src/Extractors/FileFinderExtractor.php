@@ -80,7 +80,7 @@ class FileFinderExtractor extends Extractor
      * @inheritDoc
      * @throws FilesystemException
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         $listing = $this->filesystem->listContents($this->directoryPath, $this->recursive);
 

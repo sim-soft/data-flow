@@ -25,7 +25,7 @@ class Chunk extends Transformer
     /**
      * @inheritDoc
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         if ($dataFrame) {
             $chunk = []; // Temporary array to hold items

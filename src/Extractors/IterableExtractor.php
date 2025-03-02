@@ -35,7 +35,7 @@ class IterableExtractor extends Extractor
     /**
      * {@inheritdoc}
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         return $this->iterable;
     }

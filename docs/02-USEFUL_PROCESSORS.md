@@ -258,7 +258,7 @@ $generator = function() {
 
 ![members.xlsx - Address sheet](img/members-xlsx-address-sheet.PNG)
 
-### Customizes Sheet Headers
+### Customized Sheet Headers
 
 ```php
 $generator = function() {
@@ -271,7 +271,7 @@ $generator = function() {
 (new DataFlow())
     ->from($generator())
     ->load((new SpoutLoader('/path/to/members.xlsx'))
-        ->withHeaders(['gender', 'name', 'age'], 'Profile') // Set headers for Profile sheet.
+        ->withHeaders(['gender' => 'Member Gender', 'name' => 'Full Name', 'age'], 'Profile') // Set headers for Profile sheet.
     )
     ->run();
 ```

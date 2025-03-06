@@ -24,8 +24,8 @@ class Update extends Builder
      * @param string|ActiveQuery|Raw|null $condition
      */
     public function __construct(
-        protected string       $table,
-        protected array        $attributes = [],
+        protected string $table,
+        protected array  $attributes = [],
         string|ActiveQuery|Raw $condition = null
     )
     {

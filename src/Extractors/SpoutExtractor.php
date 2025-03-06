@@ -69,9 +69,9 @@ class SpoutExtractor extends Extractor
     /**
      * Get reader.
      *
-     * @return ReaderInterface
+     * @return ReaderInterface|null
      */
-    public function &getReader(): ReaderInterface
+    public function &getReader(): ?ReaderInterface
     {
         return $this->spreadsheet->getReader();
     }
@@ -86,13 +86,13 @@ class SpoutExtractor extends Extractor
 
             if ($this->sheetNameOrIndex) {
                 yield from $this->spreadsheet->getSheetRows($this->sheetNameOrIndex);
-            } else {
+            } elseif ($this->getReader()) {
                 foreach ($this->getReader()->getSheetIterator() as $sheet) {
                     yield from $this->spreadsheet->getSheetRows($sheet->getName());
                 }
             }
 
-            $this->getReader()->close();
+            $this->getReader()?->close();
 
         } catch (ReaderNotOpenedException|SheetNotFoundException|WriterNotOpenedException|InvalidSheetNameException $throwable) {
             error_log($throwable->getMessage());

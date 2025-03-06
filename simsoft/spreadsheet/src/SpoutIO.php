@@ -28,14 +28,22 @@ use Iterator;
  */
 class SpoutIO
 {
+    /** @var SheetInterface|Sheet|null Current active sheet object */
     protected SheetInterface|Sheet|null $activeSheet = null;
 
+    /** @var bool Indicate headers exists. */
     protected bool $headerExists = false;
+
+    /** @var array Headers value. */
     protected array $headers = [];
 
     /**
      * Constructor
      *
+     * @param string $filepath
+     * @param ReaderInterface|null $reader
+     * @param WriterInterface|null $writer
+     * @param string $csvDelimiter
      * @throws IOException
      */
     final public function __construct(

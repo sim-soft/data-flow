@@ -6,6 +6,7 @@ use Box\Spout\Common\Exception\IOException;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
 use Box\Spout\Reader\Exception\ReaderNotOpenedException;
 use Box\Spout\Reader\ReaderInterface;
+use Box\Spout\Writer\Exception\InvalidSheetNameException;
 use Box\Spout\Writer\Exception\SheetNotFoundException;
 use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Iterator;
@@ -18,10 +19,10 @@ use Simsoft\Spreadsheet\SpoutIO;
 class SpoutExtractor extends Extractor
 {
     /** @var SpoutIO The reader object. */
-    protected SpoutIO $reader;
+    protected SpoutIO $spreadsheet;
 
     /** @var bool Indicate that the current file contains headers. */
-    protected bool $headerExists = false;
+    protected bool $withHeaders = true;
 
     /** @var string|int|null Sheet name or index */
     protected string|int|null $sheetNameOrIndex = null;
@@ -35,21 +36,21 @@ class SpoutExtractor extends Extractor
     public function __construct(protected string $filepath, string $csvDelimiter = ',')
     {
         try {
-            $this->reader = SpoutIO::readFromFile($filepath, csvDelimiter: $csvDelimiter);
+            $this->spreadsheet = SpoutIO::readFromFile($filepath, csvDelimiter: $csvDelimiter);
 
         } catch (IOException|UnsupportedTypeException $throwable) {
-            var_dump($throwable->getMessage());
+            error_log($throwable->getMessage());
         }
     }
 
     /**
-     * Indicate that the current file contains headers.
+     * Set no headers.
      *
      * @return $this
      */
-    public function withHeaders(): static
+    public function withoutHeaders(): static
     {
-        $this->headerExists = true;
+        $this->withHeaders = false;
         return $this;
     }
 
@@ -72,7 +73,7 @@ class SpoutExtractor extends Extractor
      */
     public function &getReader(): ReaderInterface
     {
-        return $this->reader->getReader();
+        return $this->spreadsheet->getReader();
     }
 
     /**
@@ -81,13 +82,20 @@ class SpoutExtractor extends Extractor
     public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         try {
-            if ($this->headerExists) {
-                $this->reader->withHeaders();
+            $this->withHeaders && $this->spreadsheet->withHeaders();
+
+            if ($this->sheetNameOrIndex) {
+                yield from $this->spreadsheet->getSheetRows($this->sheetNameOrIndex);
+            } else {
+                foreach ($this->getReader()->getSheetIterator() as $sheet) {
+                    yield from $this->spreadsheet->getSheetRows($sheet->getName());
+                }
             }
 
-            yield from $this->reader->getSheetRows($this->sheetNameOrIndex);
-        } catch (ReaderNotOpenedException|SheetNotFoundException|WriterNotOpenedException $throwable) {
+            $this->getReader()->close();
 
+        } catch (ReaderNotOpenedException|SheetNotFoundException|WriterNotOpenedException|InvalidSheetNameException $throwable) {
+            error_log($throwable->getMessage());
         }
     }
 }

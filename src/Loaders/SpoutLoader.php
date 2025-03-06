@@ -26,8 +26,11 @@ class SpoutLoader extends Loader
     /** @var bool Auto detect headers. */
     protected bool $detectHeaders = true;
 
-    /** @var array Headers. */
+    /** @var array<string, string[]> Headers. */
     protected array $headers = [];
+
+    /** @var string Default file extension. */
+    protected string $extension = 'xlsx';
 
     /**
      * Constructor.
@@ -38,11 +41,23 @@ class SpoutLoader extends Loader
     public function __construct(protected string $filepath, protected string $defaultSheetName = 'Sheet1')
     {
         try {
-            $this->spreadsheet = SpoutIO::createFromFile($filepath);
+
+            if (str_contains($this->filepath, '.')) {
+                [$this->filepath, $this->extension] = explode('.', $this->filepath);
+            }
+
+            if ($timestamp = date_create()) {
+                $this->filepath .= '_' . $timestamp->format('Ymd-His');
+            }
+
+            $this->filepath .= '.' . $this->extension;
+
+            $this->spreadsheet = SpoutIO::createFromFile($this->filepath);
         } catch (IOException|UnsupportedTypeException $throwable) {
             error_log($throwable->getMessage());
         }
     }
+
 
     /**
      * Auto detect headers.
@@ -66,21 +81,9 @@ class SpoutLoader extends Loader
     }
 
     /**
-     * Set temporary path.
-     *
-     * @param string $path
-     * @return $this
-     */
-    public function tempFolder(string $path): static
-    {
-        $this->getWriter()->setTempFolder($path);
-        return $this;
-    }
-
-    /**
      * Add headers.
      *
-     * @param array $headers
+     * @param string[] $headers
      * @param string|null $sheetName
      * @return $this
      * @throws IOException
@@ -136,10 +139,12 @@ class SpoutLoader extends Loader
 
                     if (array_is_list($this->headers[$sheetName])) {
                         $headers[$sheetName] = array_combine(
-                            array_values($this->headers[$sheetName]),
+                            $this->headers[$sheetName],
                             array_fill(0, count($this->headers[$sheetName]), null)
                         );
-                    } else {
+                    }
+
+                    if (!array_key_exists($sheetName, $headers)) {
                         foreach ($this->headers[$sheetName] as $fromLabel => $toLabel) {
                             $headers[$sheetName][is_string($fromLabel) ? $fromLabel : $toLabel] = null;
                         }
@@ -150,7 +155,7 @@ class SpoutLoader extends Loader
                 yield $sheetName => $data;
             }
 
-            $this->getWriter()->close();
+            $this->getWriter()?->close();
         }
     }
 }

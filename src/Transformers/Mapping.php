@@ -37,7 +37,7 @@ class Mapping extends Transformer
     /**
      * {@inheritdoc}
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         if ($dataFrame) {
             foreach ($dataFrame as $index => $value) {

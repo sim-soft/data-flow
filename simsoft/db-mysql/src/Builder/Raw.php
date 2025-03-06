@@ -39,7 +39,7 @@ class Raw implements Executable
      */
     public function getBinds(): ?array
     {
-        return empty($this->binds) ? null : $this->binds;
+        return $this->binds === null ? [] : $this->binds;
     }
 
     /**

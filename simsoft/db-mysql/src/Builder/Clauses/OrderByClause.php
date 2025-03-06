@@ -27,6 +27,10 @@ class OrderByClause extends Clause
             return implode(', ', $sql);
         }
 
+        if (strtoupper($this->attribute) === 'RAND()') {
+            return 'RAND()';
+        }
+
         $direction = strtoupper($this->value ?? '');
         if (!in_array($direction, $this->allowedDirections)) {
             $direction = $this->defaultDirection;

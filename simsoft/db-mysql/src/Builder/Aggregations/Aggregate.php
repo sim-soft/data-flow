@@ -31,8 +31,8 @@ abstract class Aggregate extends Builder
      * @param string|null $as
      */
     public function __construct(
-        protected string  $table,
-        protected string  $attribute,
+        protected string $table,
+        protected string $attribute,
         protected ?string $as = null
     )
     {

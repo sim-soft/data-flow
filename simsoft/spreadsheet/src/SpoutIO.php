@@ -3,6 +3,7 @@
 namespace Simsoft\Spreadsheet;
 
 use Box\Spout\Common\Entity\Cell;
+use Box\Spout\Common\Entity\Style\Style;
 use Box\Spout\Common\Exception\IOException;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
 use Box\Spout\Reader\Common\Creator\ReaderEntityFactory;
@@ -13,6 +14,7 @@ use Box\Spout\Reader\ReaderInterface;
 use Box\Spout\Reader\SheetInterface;
 use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Box\Spout\Writer\Common\Entity\Sheet;
+use Box\Spout\Writer\Exception\InvalidSheetNameException;
 use Box\Spout\Writer\Exception\SheetNotFoundException;
 use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Box\Spout\Writer\WriterInterface;
@@ -105,46 +107,90 @@ class SpoutIO
     }
 
     /**
+     * Determine is current file is for reading.
+     *
+     * @return bool
+     */
+    public function isReader(): bool
+    {
+        return $this->reader instanceof ReaderAbstract;
+    }
+
+    /**
+     * Determine is current file is for writing.
+     *
+     * @return bool
+     */
+    public function isWriter(): bool
+    {
+        return $this->writer instanceof WriterMultiSheetsAbstract;
+    }
+
+    /**
      * Set active sheet.
      *
      * @throws ReaderNotOpenedException
      * @throws WriterNotOpenedException
      * @throws SheetNotFoundException
+     * @throws InvalidSheetNameException
      */
     public function sheet(string|int $sheetNameOrIndex = ''): static
     {
-        if ($this->reader instanceof ReaderAbstract) {
-            foreach ($this->reader->getSheetIterator() as $sheet) {
-                if ($sheet->getIndex() === $sheetNameOrIndex || $sheet->getName() === $sheetNameOrIndex) {
-                    $this->activeSheet = &$sheet;
-                    break;
-                }
+        if ($sheet = $this->sheetExists($sheetNameOrIndex, true)) {
+            if ($this->isReader()) {
+                $this->activeSheet = &$sheet;
+                $this->headers = [];
+            } elseif ($this->writer instanceof WriterMultiSheetsAbstract) {
+                $this->writer->setCurrentSheet($this->activeSheet = $sheet);
             }
         } elseif ($this->writer instanceof WriterMultiSheetsAbstract) {
-            foreach ($this->writer->getSheets() as $sheet) {
-                if ($sheet->getIndex() === $sheetNameOrIndex || $sheet->getName() === $sheetNameOrIndex) {
-                    $this->writer->setCurrentSheet($this->activeSheet = $sheet);
-                    break;
-                }
-            }
-
-            if ($this->activeSheet === null) {
-                $this->writer->addNewSheetAndMakeItCurrent();
-                $this->activeSheet = $this->writer->getCurrentSheet();
-            }
+            $sheet = $this->writer->addNewSheetAndMakeItCurrent();
+            $sheet->setName($sheetNameOrIndex);
+            $this->activeSheet = $this->writer->getCurrentSheet();
         }
         return $this;
     }
 
+    /**
+     * Determine if sheet exists.
+     *
+     * @param string|int $sheetNameOrIndex
+     * @param bool $returnSheet
+     * @return bool|Sheet|SheetInterface
+     * @throws ReaderNotOpenedException
+     * @throws WriterNotOpenedException
+     * @throws SheetNotFoundException
+     */
+    public function sheetExists(string|int $sheetNameOrIndex, bool $returnSheet = false): bool|Sheet|SheetInterface
+    {
+        if ($this->reader instanceof ReaderAbstract) {
+            foreach ($this->reader->getSheetIterator() as $sheet) {
+                if ($sheet->getIndex() === $sheetNameOrIndex || $sheet->getName() === $sheetNameOrIndex) {
+                    return $returnSheet ? $sheet : true;
+                }
+            }
+
+            throw new SheetNotFoundException("Sheet: '$sheetNameOrIndex' is not found!");
+
+        } elseif ($this->writer instanceof WriterMultiSheetsAbstract) {
+            foreach ($this->writer->getSheets() as $sheet) {
+                if ($sheet->getIndex() === $sheetNameOrIndex || $sheet->getName() === $sheetNameOrIndex) {
+                    return $returnSheet ? $sheet : true;
+                }
+            }
+        }
+
+        return false;
+    }
 
     /**
      * @throws ReaderNotOpenedException
      * @throws SheetNotFoundException
-     * @throws WriterNotOpenedException
+     * @throws WriterNotOpenedException|InvalidSheetNameException
      */
     public function getSheetRows(string|int|null $sheetNameOrIndex = null): Iterator
     {
-        foreach ($this->sheet($sheetNameOrIndex ?? '')->activeSheet->getRowIterator() as $index => $row) {
+        foreach ($this->sheet($sheetNameOrIndex ??= 'Sheet1')->activeSheet->getRowIterator() as $index => $row) {
             if ($index === 1 && $this->headerExists && $this->headers === []) {
                 /** @var Cell $cell */
                 foreach ($row->getCells() as $cell) {
@@ -156,7 +202,9 @@ class SpoutIO
             $data = [];
             if ($this->headers) {
                 foreach ($row->getCells() as $cellIndex => $cell) {
-                    $data[$this->headers[$cellIndex]] = $cell->getValue();
+                    if ($this->headers[$cellIndex] ?? false) {
+                        $data[$this->headers[$cellIndex]] = $cell->getValue();
+                    }
                 }
             } else {
                 foreach ($row->getCells() as $cell) {
@@ -164,7 +212,7 @@ class SpoutIO
                 }
             }
 
-            yield $data;
+            yield $sheetNameOrIndex => $data;
         }
     }
 
@@ -172,11 +220,13 @@ class SpoutIO
      * Add Row.
      *
      * @param array $data
+     * @param Style|null $style
      * @return void
+     * @throws IOException
+     * @throws WriterNotOpenedException
      */
-    public function addRow(array $data): void
+    public function addRow(array $data, ?Style $style = null): void
     {
-        $this->activeSheet = $this->writer->getCurrentSheet();
+        $this->writer->addRow(WriterEntityFactory::createRowFromArray($data, $style));
     }
-
 }

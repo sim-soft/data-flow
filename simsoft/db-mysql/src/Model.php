@@ -43,6 +43,9 @@ abstract class Model implements ArrayAccess
     /** @var array Dirty attributes */
     protected array $dirtyAttributes = [];
 
+    /** @var array Relations */
+    protected array $related = [];
+
     /**
      * @var array Attributes casts. Supported casts' int, bool, float, string, array
      *
@@ -150,7 +153,15 @@ abstract class Model implements ArrayAccess
             };
         }
 
-        return $this->attributes[$name] ?? null;
+        if (array_key_exists($name, $this->attributes)) {
+            return $this->attributes[$name];
+        }
+
+        if (array_key_exists($name, $this->related) || method_exists($this, $name)) {
+            return $this->related[$name] ??= $this->{$name}()->findFor($this);
+        }
+
+        return null;
     }
 
     /**
@@ -550,5 +561,36 @@ abstract class Model implements ArrayAccess
                 ->execute();
         }
         return false;
+    }
+
+    /**
+     * Declares a has-one relation.
+     *
+     * @param string $class
+     * @param array $link
+     * @return ActiveQuery
+     */
+    public function hasOne(string $class, array $link): ActiveQuery
+    {
+        /** @var $class Model */
+        $query = $class::find();
+        $query->link = $link;
+        return $query;
+    }
+
+    /**
+     * Declares a has-many relation.
+     *
+     * @param string $class
+     * @param array $link
+     * @return ActiveQuery
+     */
+    public function hasMany(string $class, array $link): ActiveQuery
+    {
+        /** @var $class Model */
+        $query = $class::find();
+        $query->link = $link;
+        $query->multiple = true;
+        return $query;
     }
 }

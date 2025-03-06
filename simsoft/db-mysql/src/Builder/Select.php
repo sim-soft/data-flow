@@ -21,8 +21,8 @@ class Select extends Builder
      * @param string|ActiveQuery|Raw $condition
      */
     public function __construct(
-        protected string       $table,
-        protected array        $selects = [],
+        protected string $table,
+        protected array  $selects = [],
         string|ActiveQuery|Raw $condition = ''
     )
     {

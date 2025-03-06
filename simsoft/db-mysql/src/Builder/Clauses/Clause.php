@@ -22,7 +22,7 @@ abstract class Clause
     public function __construct(
         protected mixed $attribute,
         protected mixed $value = null,
-        protected bool  $is = true,
+        protected bool $is = true,
     )
     {
         if (is_numeric($this->value) && !str_starts_with($this->value, '0')) {

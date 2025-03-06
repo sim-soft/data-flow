@@ -15,5 +15,5 @@ interface Flowable
      * @param Iterator|null $dataFrame
      * @return Iterator
      */
-    public function __invoke(?Iterator $dataFrame): Iterator;
+    public function __invoke(?Iterator $dataFrame = null): Iterator;
 }

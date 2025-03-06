@@ -95,7 +95,7 @@ class SpreadsheetLoader extends Loader
      * {@inheritdoc}
      * @throws Exception
      */
-    public function __invoke(?Iterator $dataFrame): Iterator
+    public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         $this->setFilepath();
 

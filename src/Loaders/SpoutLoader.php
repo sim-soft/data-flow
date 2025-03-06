@@ -93,7 +93,14 @@ class SpoutLoader extends Loader
     {
         $sheetName ??= $this->defaultSheetName;
         $this->headers[$sheetName] = $headers;
-        $this->spreadsheet->sheet($sheetName)->addRow($headers, (new StyleBuilder())->setFontBold()->build());
+
+        $this->spreadsheet
+            ->sheet($sheetName)
+            ->addRow(
+                array_is_list($headers) ? $headers : array_values($headers),
+                (new StyleBuilder())->setFontBold()->build()
+            );
+
         return $this;
     }
 
@@ -127,10 +134,16 @@ class SpoutLoader extends Loader
                         $this->withHeaders(array_keys($data), $sheetName);
                     }
 
-                    $headers[$sheetName] = array_combine(
-                        array_values($this->headers[$sheetName]),
-                        array_fill(0, count($this->headers[$sheetName]), null)
-                    );
+                    if (array_is_list($this->headers[$sheetName])) {
+                        $headers[$sheetName] = array_combine(
+                            array_values($this->headers[$sheetName]),
+                            array_fill(0, count($this->headers[$sheetName]), null)
+                        );
+                    } else {
+                        foreach ($this->headers[$sheetName] as $fromLabel => $toLabel) {
+                            $headers[$sheetName][is_string($fromLabel) ? $fromLabel : $toLabel] = null;
+                        }
+                    }
                 }
 
                 $this->spreadsheet->sheet($sheetName)->addRow(array_merge($headers[$sheetName], $data));

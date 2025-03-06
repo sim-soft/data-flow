@@ -15,6 +15,7 @@ use Simsoft\DB\MySQL\Builder\Clauses\SelectClause;
 use Simsoft\DB\MySQL\Builder\Conditions\BetweenCondition;
 use Simsoft\DB\MySQL\Builder\Conditions\BetweenDateCondition;
 use Simsoft\DB\MySQL\Builder\Conditions\Condition;
+use Simsoft\DB\MySQL\Builder\Conditions\ExistsCondition;
 use Simsoft\DB\MySQL\Builder\Conditions\InCondition;
 use Simsoft\DB\MySQL\Builder\Conditions\LikeCondition;
 use Simsoft\DB\MySQL\Collection;
@@ -76,6 +77,15 @@ class ActiveQuery implements Executable, Updatable, Deletable
 
     /** @var string|null Attribute to be plucked */
     protected ?string $pluckAttribute = null;
+
+    /** @var array Relation link */
+    public array $link = [];
+
+    /** @var bool Relation is multiple */
+    public bool $multiple = false;
+
+    /** @var string|null Via relation */
+    public ?string $via = null;
 
     /**
      * Constructor.
@@ -340,14 +350,16 @@ class ActiveQuery implements Executable, Updatable, Deletable
      */
     public function with(string $alias, callable $condition): static
     {
-        $backup = $this->getAlias();
-        $this->alias($alias);
-        $condition->bindTo($this)($this);
-        $this->alias($backup);
-
+        if ($condition instanceof Closure
+            && ($callable = Closure::bind($condition, $this, get_class($this)))
+        ) {
+            $backup = $this->getAlias();
+            $this->alias($alias);
+            $callable($this);
+            $this->alias($backup);
+        }
         return $this;
     }
-
 
     /**
      * Select statement.
@@ -384,15 +396,16 @@ class ActiveQuery implements Executable, Updatable, Deletable
      */
     public function where(
         string|array|callable|Raw|Clause $attribute,
-        mixed                            $operator = '=',
-        mixed                            $value = null,
-        string                           $logicalOperator = 'AND'
+        mixed  $operator = '=',
+        mixed  $value = null,
+        string $logicalOperator = 'AND'
     ): static
     {
-        if (is_callable($attribute) && !$attribute instanceof Raw) {
+        if ($attribute instanceof Closure
+            && ($callable = Closure::bind($attribute, $this, get_class($this)))
+        ) {
             $this->onCondition('(', $logicalOperator);
-            // @var callable $attribute
-            $attribute->bindTo($this)($this);
+            $callable($this);
             return $this->onCondition(')');
         } elseif ($attribute instanceof Clause) {
             return $this->onCondition($attribute->alias($this->getAlias()), $logicalOperator);
@@ -489,13 +502,60 @@ class ActiveQuery implements Executable, Updatable, Deletable
     }
 
     /**
+     * Exists condition.
+     *
+     * @param ActiveQuery|Raw $query
+     * @param string $logicalOperator
+     * @return $this
+     */
+    public function exists(ActiveQuery|Raw $query, string $logicalOperator = 'AND'): static
+    {
+        return $this->onCondition(new ExistsCondition($query), $logicalOperator);
+    }
+
+    /**
+     * Or Exists condition.
+     *
+     * @param ActiveQuery|Raw $query
+     * @return $this
+     */
+    public function orExists(ActiveQuery|Raw $query): static
+    {
+        return $this->exists($query, 'OR');
+    }
+
+    /**
+     * Not Exists condition.
+     *
+     * @param ActiveQuery|Raw $query
+     * @param string $logicalOperator
+     * @return $this
+     */
+    public function notExists(ActiveQuery|Raw $query, string $logicalOperator = 'AND'): static
+    {
+        return $this->onCondition(new ExistsCondition($query, is: false), $logicalOperator);
+    }
+
+    /**
+     * Or not Exists condition.
+     *
+     * @param ActiveQuery|Raw $query
+     * @return $this
+     */
+    public function orNotExists(ActiveQuery|Raw $query): static
+    {
+        return $this->notExists($query, 'OR');
+    }
+
+    /**
      * In condition.
      *
      * @param string $attribute the attribute name
-     * @param array $values the array of values for the query
+     * @param array|ActiveQuery|Raw $values the array of values for the query
      * @param string $logicalOperator The logical operator. Either 'AND' or 'OR'.
+     * @return ActiveQuery
      */
-    public function in(string $attribute, array $values, string $logicalOperator = 'AND'): static
+    public function in(string $attribute, array|ActiveQuery|Raw $values, string $logicalOperator = 'AND'): static
     {
         if ($values) {
             return $this->onCondition(
@@ -511,9 +571,10 @@ class ActiveQuery implements Executable, Updatable, Deletable
      * Or in condition.
      *
      * @param string $attribute the attribute name
-     * @param array $values the array of values for the query
+     * @param array|ActiveQuery|Raw $values the array of values for the query
+     * @return ActiveQuery
      */
-    public function orIn(string $attribute, array $values): static
+    public function orIn(string $attribute, array|ActiveQuery|Raw $values): static
     {
         return $this->in($attribute, $values, 'OR');
     }
@@ -522,10 +583,11 @@ class ActiveQuery implements Executable, Updatable, Deletable
      * Not in condition.
      *
      * @param string $attribute the attribute name
-     * @param array $values the array of values for the query
+     * @param array|ActiveQuery|Raw $values the array of values for the query
      * @param string $logicalOperator The logical operator. Either 'AND' or 'OR'.
+     * @return ActiveQuery
      */
-    public function notIn(string $attribute, array $values, string $logicalOperator = 'AND'): static
+    public function notIn(string $attribute, array|ActiveQuery|Raw $values, string $logicalOperator = 'AND'): static
     {
         if ($values) {
             return $this->onCondition(
@@ -540,9 +602,10 @@ class ActiveQuery implements Executable, Updatable, Deletable
      * Or not in condition.
      *
      * @param string $attribute the attribute name
-     * @param array $values the array of values for the query
+     * @param array|ActiveQuery|Raw $values the array of values for the query
+     * @return ActiveQuery
      */
-    public function orNotIn(string $attribute, array $values): static
+    public function orNotIn(string $attribute, array|ActiveQuery|Raw $values): static
     {
         return $this->notIn($attribute, $values, 'OR');
     }
@@ -837,12 +900,12 @@ class ActiveQuery implements Executable, Updatable, Deletable
         if (is_array($words)) {
             $conditions = [];
             foreach ($words as $word) {
-                $conditions[] = [$attribute, 'REGEXP', '\\b' . addslashes($word) . '\\b'];
+                $conditions[] = [$attribute, 'REGEXP', '\\b' . addslashes(quotemeta($word)) . '\\b'];
             }
 
             return $this->where($conditions, logicalOperator: $logicalOperator);
         } else {
-            return $this->regex($attribute, '\\b' . addslashes($words) . '\\b', $logicalOperator);
+            return $this->regex($attribute, '\\b' . addslashes(quotemeta($words)) . '\\b', $logicalOperator);
         }
     }
 
@@ -1444,4 +1507,54 @@ class ActiveQuery implements Executable, Updatable, Deletable
         return (new Collection($this))->toArray();
     }
 
+    /**
+     * Debug SQL statement.
+     *
+     * @param bool $fullSQL Determine to show full SQL. Default: false.
+     * @return static
+     */
+    public function dumpQuery(bool $fullSQL = false): static
+    {
+        $query = clone $this;
+        if ($fullSQL) {
+            print 'FULL SQL: ' . PHP_EOL . $this->getFullSQL();
+        } else {
+            print 'SQL: ' . PHP_EOL . $query->getSQL() . PHP_EOL;
+            print 'Binds: ' . json_encode($query->getBinds());
+        }
+        return $this;
+    }
+
+    /**
+     * Via relationship
+     *
+     * @param string $relationName
+     * @return $this
+     */
+    public function via(string $relationName): static
+    {
+        $this->via = $relationName;
+        return $this;
+    }
+
+    /**
+     * Find for related
+     *
+     * @return Collection|$this|null
+     */
+    public function findFor(Model $model): mixed
+    {
+        if ($this->link === []) {
+            return null;
+        }
+
+        if ($this->via) {
+            $relation = explode('.', $this->via);
+            //TODO: to be continue to handle nested relation.
+        } else {
+            $this->where(key($this->link), $model->{current($this->link)});
+        }
+
+        return $this->multiple ? $this->get() : $this->first();
+    }
 }

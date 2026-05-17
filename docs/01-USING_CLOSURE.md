@@ -1,5 +1,6 @@
 ---
 title: Using Closure
+parent: Getting Started
 nav_order: 1
 ---
 

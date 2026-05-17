@@ -1,6 +1,7 @@
 ---
 title: Spreadsheet
-nav_order: 14
+parent: Features
+nav_order: 3
 ---
 
 # Spreadsheet (PhpSpreadsheet)

@@ -2,14 +2,15 @@
 
 namespace Simsoft\DataFlow\Extractors;
 
-use Box\Spout\Common\Exception\IOException;
-use Box\Spout\Common\Exception\UnsupportedTypeException;
-use Box\Spout\Reader\Exception\ReaderNotOpenedException;
-use Box\Spout\Reader\ReaderInterface;
-use Box\Spout\Writer\Exception\InvalidSheetNameException;
-use Box\Spout\Writer\Exception\SheetNotFoundException;
-use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Iterator;
+use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Common\Exception\UnsupportedTypeException;
+use OpenSpout\Reader\Exception\ReaderNotOpenedException;
+use OpenSpout\Reader\ReaderInterface;
+use OpenSpout\Writer\Exception\InvalidSheetNameException;
+use OpenSpout\Writer\Exception\SheetNotFoundException;
+use OpenSpout\Writer\Exception\WriterNotOpenedException;
+use Simsoft\DataFlow\Exceptions\ExtractorException;
 use Simsoft\DataFlow\Extractor;
 use Simsoft\Spreadsheet\SpoutIO;
 
@@ -32,14 +33,17 @@ class SpoutExtractor extends Extractor
      *
      * @param string $filepath
      * @param string $csvDelimiter CSV delimiter. If the current file is CSV.
+     * @throws ExtractorException
      */
     public function __construct(protected string $filepath, string $csvDelimiter = ',')
     {
         try {
             $this->spreadsheet = SpoutIO::readFromFile($filepath, csvDelimiter: $csvDelimiter);
-
         } catch (IOException|UnsupportedTypeException $throwable) {
-            error_log($throwable->getMessage());
+            throw new ExtractorException(
+                "Failed to open file for reading: {$filepath}",
+                previous: $throwable
+            );
         }
     }
 
@@ -71,6 +75,7 @@ class SpoutExtractor extends Extractor
      *
      * @return ReaderInterface|null
      */
+    /** @phpstan-ignore missingType.generics */
     public function &getReader(): ?ReaderInterface
     {
         return $this->spreadsheet->getReader();
@@ -78,6 +83,7 @@ class SpoutExtractor extends Extractor
 
     /**
      * @inheritDoc
+     * @throws ExtractorException
      */
     public function __invoke(?Iterator $dataFrame = null): Iterator
     {
@@ -93,9 +99,11 @@ class SpoutExtractor extends Extractor
             }
 
             $this->getReader()?->close();
-
         } catch (ReaderNotOpenedException|SheetNotFoundException|WriterNotOpenedException|InvalidSheetNameException $throwable) {
-            error_log($throwable->getMessage());
+            throw new ExtractorException(
+                "Failed to read spreadsheet: {$this->filepath}",
+                previous: $throwable
+            );
         }
     }
 }

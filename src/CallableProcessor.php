@@ -15,13 +15,11 @@ class CallableProcessor extends Processor
 
     /**
      * Constructor
-     * @throws Exception
+     *
+     * @param callable $callback
      */
     public function __construct(protected mixed $callback)
     {
-        if (!is_callable($this->callback)) {
-            throw new Exception("Invalid Callable");
-        }
     }
 
     /**

@@ -50,7 +50,7 @@ class UserReminderFlow extends DataFlow
                 'Status' => $user->status,
                 'Expiry Date' => $user->expiry_date,
             ];
-        }
+        });
     }
 
     /**

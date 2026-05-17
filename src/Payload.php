@@ -119,7 +119,6 @@ class Payload implements ArrayAccess
      */
     public function reset(): void
     {
-        unset($this->attributes);
         $this->attributes = $this->initAttributes;
     }
 }

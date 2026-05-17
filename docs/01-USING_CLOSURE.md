@@ -89,13 +89,14 @@ Using "Stop" Signal
 ```php
 require "vendor/autoload.php";
 
+use Closure;
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Enums\Signal;
 
 (new DataFlow())
         ->from(range(1, 10))
         ->transform(function(int $data, $key, Closure $exception){
-            if ($key == 5)) {
+            if ($key == 5) {
                 return Signal::Stop;
             }
 

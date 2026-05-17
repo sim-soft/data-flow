@@ -2,29 +2,30 @@
 
 namespace Simsoft\Spreadsheet;
 
-use Box\Spout\Common\Entity\Cell;
-use Box\Spout\Common\Entity\Style\Style;
-use Box\Spout\Common\Exception\IOException;
-use Box\Spout\Common\Exception\UnsupportedTypeException;
-use Box\Spout\Reader\Common\Creator\ReaderEntityFactory;
-use Box\Spout\Reader\CSV\Reader as CSVReader;
-use Box\Spout\Reader\Exception\ReaderNotOpenedException;
-use Box\Spout\Reader\ReaderAbstract;
-use Box\Spout\Reader\ReaderInterface;
-use Box\Spout\Reader\SheetInterface;
-use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
-use Box\Spout\Writer\Common\Entity\Sheet;
-use Box\Spout\Writer\Exception\InvalidSheetNameException;
-use Box\Spout\Writer\Exception\SheetNotFoundException;
-use Box\Spout\Writer\Exception\WriterNotOpenedException;
-use Box\Spout\Writer\WriterInterface;
-use Box\Spout\Writer\WriterMultiSheetsAbstract;
 use Iterator;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Common\Exception\UnsupportedTypeException;
+use OpenSpout\Reader\CSV\Options as CSVReaderOptions;
+use OpenSpout\Reader\CSV\Reader as CSVReader;
+use OpenSpout\Reader\Exception\ReaderNotOpenedException;
+use OpenSpout\Reader\ReaderInterface;
+use OpenSpout\Reader\SheetInterface;
+use OpenSpout\Writer\Common\Entity\Sheet;
+use OpenSpout\Writer\Exception\InvalidSheetNameException;
+use OpenSpout\Writer\Exception\SheetNotFoundException;
+use OpenSpout\Writer\Exception\WriterNotOpenedException;
+use OpenSpout\Writer\WriterInterface;
+use OpenSpout\Writer\WriterMultiSheetsAbstract;
+use OpenSpout\Reader\Common\Creator\ReaderFactory;
+use OpenSpout\Writer\Common\Creator\WriterFactory;
 
 /**
  * Class SpoutIO
  *
- * Read/ write XLSX, CSV, ODS files with open/spout.
+ * Read/ write XLSX, CSV, ODS files with OpenSpout.
  */
 class SpoutIO
 {
@@ -54,9 +55,6 @@ class SpoutIO
     )
     {
         if ($this->reader) {
-            if ($this->reader instanceof CSVReader) {
-                $this->reader->setFieldDelimiter($csvDelimiter);
-            }
             $this->reader->open($this->filepath);
         }
 
@@ -86,21 +84,36 @@ class SpoutIO
     /**
      * Read from file.
      *
+     * @param string $filepath
+     * @param string $csvDelimiter
+     * @return static
      * @throws UnsupportedTypeException|IOException
      */
     public static function readFromFile(string $filepath, string $csvDelimiter = ','): static
     {
-        return new static($filepath, reader: ReaderEntityFactory::createReaderFromFile($filepath), csvDelimiter: $csvDelimiter);
+        $extension = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+
+        if ($extension === 'csv') {
+            $options = new CSVReaderOptions();
+            $options->FIELD_DELIMITER = $csvDelimiter;
+            $reader = new CSVReader($options);
+        } else {
+            $reader = ReaderFactory::createFromFile($filepath);
+        }
+
+        return new static($filepath, reader: $reader, csvDelimiter: $csvDelimiter);
     }
 
     /**
      * Write to file.
      *
+     * @param string $filepath
+     * @return static
      * @throws UnsupportedTypeException|IOException
      */
     public static function createFromFile(string $filepath): static
     {
-        return new static($filepath, writer: WriterEntityFactory::createWriterFromFile($filepath));
+        return new static($filepath, writer: WriterFactory::createFromFile($filepath));
     }
 
     /**
@@ -121,7 +134,7 @@ class SpoutIO
      */
     public function isReader(): bool
     {
-        return $this->reader instanceof ReaderAbstract;
+        return $this->reader instanceof ReaderInterface;
     }
 
     /**
@@ -131,12 +144,14 @@ class SpoutIO
      */
     public function isWriter(): bool
     {
-        return $this->writer instanceof WriterMultiSheetsAbstract;
+        return $this->writer instanceof WriterInterface;
     }
 
     /**
      * Set active sheet.
      *
+     * @param string|int $sheetNameOrIndex
+     * @return static
      * @throws ReaderNotOpenedException
      * @throws WriterNotOpenedException
      * @throws SheetNotFoundException
@@ -171,7 +186,7 @@ class SpoutIO
      */
     public function sheetExists(string|int $sheetNameOrIndex, bool $returnSheet = false): bool|Sheet|SheetInterface
     {
-        if ($this->reader instanceof ReaderAbstract) {
+        if ($this->reader instanceof ReaderInterface) {
             foreach ($this->reader->getSheetIterator() as $sheet) {
                 if ($sheet->getIndex() === $sheetNameOrIndex || $sheet->getName() === $sheetNameOrIndex) {
                     return $returnSheet ? $sheet : true;
@@ -192,6 +207,10 @@ class SpoutIO
     }
 
     /**
+     * Get sheet rows.
+     *
+     * @param string|int|null $sheetNameOrIndex
+     * @return Iterator
      * @throws ReaderNotOpenedException
      * @throws SheetNotFoundException
      * @throws WriterNotOpenedException|InvalidSheetNameException
@@ -229,12 +248,19 @@ class SpoutIO
      *
      * @param array $data
      * @param Style|null $style
+     * @param bool $bold
      * @return void
      * @throws IOException
      * @throws WriterNotOpenedException
      */
-    public function addRow(array $data, ?Style $style = null): void
+    public function addRow(array $data, ?Style $style = null, bool $bold = false): void
     {
-        $this->writer->addRow(WriterEntityFactory::createRowFromArray($data, $style));
+        if ($style === null && $bold) {
+            $style = new Style();
+            $style->setFontBold();
+        }
+
+        $row = Row::fromValues($data, $style);
+        $this->writer->addRow($row);
     }
 }

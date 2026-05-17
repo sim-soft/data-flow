@@ -3,30 +3,32 @@
 namespace Simsoft\DataFlow\Traits;
 
 use Simsoft\DataFlow\Enums\Signal;
+use Simsoft\DataFlow\Exceptions\DataFlowException;
 use Closure;
-use Exception;
 use Iterator;
 
 /**
  * CallableDataFrame trait
  *
- * Walk through data frame with callback method.
+ * Walk through a data frame with a callback method.
  */
 trait CallableDataFrame
 {
     /**
-     * Walk through data frame with callback method.
+     * Walk through a data frame with a callback method.
      *
      * @param Iterator|null $dataFrame
-     * @param Closure $callback
+     * @param callable $callback
      * @return Iterator
-     * @throws Exception
+     * @throws DataFlowException
      */
-    public function call(?Iterator $dataFrame, Closure $callback): Iterator
+    public function call(?Iterator $dataFrame, callable $callback): Iterator
     {
         if ($dataFrame !== null) {
 
-            $callback = Closure::bind($callback, $this, get_called_class());
+            if ($callback instanceof Closure) {
+                $callback = Closure::bind($callback, $this, get_called_class());
+            }
 
             foreach ($dataFrame as $key => $data) {
                 $exception = null;
@@ -40,7 +42,7 @@ trait CallableDataFrame
                 ]);
 
                 if (is_string($exception)) {
-                    throw new Exception($exception);
+                    throw new DataFlowException($exception);
                 }
 
                 if ($feedback === Signal::Next) {

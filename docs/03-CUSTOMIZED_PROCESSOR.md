@@ -99,14 +99,13 @@ class EmailMessageLoader extends Loader
         foreach ($dataFrame as $mail) {
             if (mail($mail->email, $mail->subject, $mail->message, $mail->headers)) {
 
-                // Using info() method to output message.
-                $this->info("Mail to $email->email sent successfully.");
+                echo "Mail to $mail->email sent successfully." . PHP_EOL;
 
                 continue;
             }
 
-            yield $email; // passing failed email to next processor.
-            error_log("Mail birthday greeting to $email->email failed.");
+            yield $mail; // passing failed email to next processor.
+            error_log("Mail birthday greeting to $mail->email failed.");
         }
     }
 }
@@ -140,4 +139,64 @@ try {
 // Mail to janedoe@email.com sent successfully.
 // Mail to peter@email.com sent successfully.
 // Mail to philiip@email.com sent successfully.
+```
+
+## Error-Resilient Processors
+
+Custom processors can be configured with error strategies at the call site.
+
+```php
+use Simsoft\DataFlow\DataFlow;
+use Simsoft\DataFlow\Enums\ErrorStrategy;
+
+(new DataFlow())
+    ->from(new BirthdayUsersExtractor(date_create()))
+    ->transform(
+        (new BirthdayGreetingTransformer())
+            ->withErrorStrategy(ErrorStrategy::Skip)
+            ->withName('greeting-builder')
+    )
+    ->load(
+        (new EmailMessageLoader())
+            ->withRetry(maxAttempts: 3, delay: 1000)
+            ->withName('email-sender')
+    )
+    ->run();
+```
+
+Failed emails will be retried up to 3 times with 1-second backoff. If all
+retries fail, the row is recorded in the dead-letter collection.
+
+## Dry-Run Aware Loaders
+
+Custom loaders can check `$this->isDryRun()` to skip side effects during dry-run
+mode.
+
+```php
+use Simsoft\DataFlow\Loader;
+use Iterator;
+
+class EmailMessageLoader extends Loader
+{
+    public function __invoke(?Iterator $dataFrame = null): Iterator
+    {
+        foreach ($dataFrame as $mail) {
+            if (!$this->isDryRun()) {
+                mail($mail->email, $mail->subject, $mail->message, $mail->headers);
+            }
+
+            yield $mail;
+        }
+    }
+}
+
+// Usage: validate the pipeline without sending emails
+$result = (new DataFlow())
+    ->from(new BirthdayUsersExtractor(date_create()))
+    ->transform(new BirthdayGreetingTransformer())
+    ->load(new EmailMessageLoader())
+    ->dryRun()
+    ->run();
+
+echo "Would send {$result->getProcessedRows()} emails\n";
 ```

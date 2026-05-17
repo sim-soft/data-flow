@@ -1,41 +1,62 @@
 <style>
-    /* Simsoft brand colors from logo */
-    :root {
-        --link-color: #C47A08;
-        --link-color-hover: #a56607;
+    /* Simsoft brand colors — amber/orange from logo */
+
+    /* Links */
+    .side-bar a, .main-content a, a {
+        color: #C47A08 !important;
     }
 
-    a, .nav-list .nav-list-item a, .site-title {
-        color: #C47A08;
+    .side-bar a:hover, .main-content a:hover, a:hover {
+        color: #9e6206 !important;
     }
 
-    a:hover {
-        color: #a56607;
+    /* Active nav item */
+    .nav-list-link.active {
+        font-weight: 700 !important;
+        border-left: 3px solid #E8960C !important;
+        color: #C47A08 !important;
     }
 
-    .btn-primary, .search-input:focus {
-        border-color: #E8960C;
+    /* Sidebar background */
+    .side-bar {
+        background-color: #fdf8f0 !important;
     }
 
+    /* Search focus */
+    .search-input:focus {
+        border-color: #E8960C !important;
+        box-shadow: 0 0 0 3px rgba(232, 150, 12, 0.2) !important;
+    }
+
+    /* Buttons */
     .btn-primary {
-        background-color: #E8960C;
-        color: #fff;
+        background-color: #E8960C !important;
+        border-color: #E8960C !important;
+        color: #fff !important;
     }
 
     .btn-primary:hover {
-        background-color: #C47A08;
+        background-color: #C47A08 !important;
+        border-color: #C47A08 !important;
     }
 
-    .site-nav {
-        background-color: #fdf8f0;
+    /* Site title */
+    .site-title {
+        color: #1a1a1a !important;
     }
 
-    .search-input {
-        background-color: #fdf8f0;
+    /* Code blocks */
+    .highlight, code {
+        background-color: #fef9f0 !important;
     }
 
-    .nav-list .nav-list-item .nav-list-link.active {
-        color: #C47A08;
-        font-weight: 600;
+    /* Table header */
+    th {
+        background-color: #fdf8f0 !important;
+    }
+
+    /* Footer */
+    .site-footer {
+        border-top-color: #f0dbb8 !important;
     }
 </style>

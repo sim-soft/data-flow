@@ -1,6 +1,7 @@
 ---
 title: Checkpoint & Resume
-nav_order: 12
+parent: Resilience
+nav_order: 3
 ---
 
 # Checkpoint & Resume

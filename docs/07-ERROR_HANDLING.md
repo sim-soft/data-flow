@@ -1,6 +1,7 @@
 ---
 title: Error Handling
-nav_order: 7
+parent: Resilience
+nav_order: 1
 ---
 
 # Error Handling

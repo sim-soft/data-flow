@@ -1,6 +1,7 @@
 ---
 title: Circuit Breaker
-nav_order: 11
+parent: Resilience
+nav_order: 2
 ---
 
 # Circuit Breaker

@@ -1,6 +1,7 @@
 ---
 title: Schema Validation
-nav_order: 10
+parent: Features
+nav_order: 2
 ---
 
 # Schema Validation

@@ -1,6 +1,7 @@
 ---
 title: Dry-Run Mode
-nav_order: 9
+parent: Features
+nav_order: 4
 ---
 
 # Dry-Run Mode

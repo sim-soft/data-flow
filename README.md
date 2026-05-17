@@ -1,6 +1,35 @@
 # Introduction
 
-Simple ETL Pipeline data flow.
+A lightweight, composable ETL (Extract, Transform, Load) pipeline library for
+PHP 8.2+ with fluent API, error handling, observability, and spreadsheet
+support.
+
+📖 **[Full Documentation](https://simsoft.github.io/data-flow/)**
+
+## Why This Library
+
+- **Fluent, composable API** — chain extractors, transformers, and loaders in a
+  single readable expression
+- **Built-in resilience** — retry with exponential backoff + jitter, circuit
+  breaker, and checkpoint/resume without external dependencies
+- **Zero-overhead opt-in** — every resilience feature uses the null object
+  pattern; disabled features cost nothing at runtime
+- **Generator-based streaming** — constant memory footprint regardless of
+  dataset size
+- **Per-stage error strategies** — configure Skip, Retry, Throw, or
+  LogAndContinue independently on each stage
+- **Crash recovery** — checkpoint/resume enables long-running pipelines to
+  recover from failures without reprocessing from scratch
+- **Circuit breaker** — prevents cascading failures when downstream services
+  degrade, a pattern common in microservices (Resilience4j, Polly) but unique
+  among PHP ETL libraries
+- **Dead letter collection** — failed and circuit-open rows are captured with
+  full context for inspection or reprocessing
+- **Inline schema validation** — validate row data with pipe-delimited rules (
+  Laravel-style syntax) without leaving the pipeline
+- **Real-time metrics** — pluggable MetricsExporter interface for emitting
+  events to logging, StatsD, Prometheus, or custom systems
+- **Dry-run mode** — validate entire pipelines without performing actual writes
 
 ## Install
 
@@ -110,7 +139,8 @@ Splitting data into smaller, manageable parts of a fixed size
 
 ## Mapping
 
-Mapping method allow you to convey the data to another format.
+Mapping method allow you to convey the data to another format. Original keys are
+preserved; mapped keys are added or overwritten.
 
 ```php
 (new DataFlow())
@@ -140,6 +170,69 @@ Mapping method allow you to convey the data to another format.
 // John Smith is 50 years old. Yes
 // Jane Smith is 60 years old. Yes
 ```
+
+## Set New Map
+
+`setNewMap()` converts source data into a completely new array containing **only
+** the mapped keys. Unlike `map()` which merges into the existing row,
+`setNewMap()` discards all original keys.
+
+```php
+(new DataFlow())
+    ->from([
+        ['first_name' => 'John', 'last_name' => 'Doe', 'age' => 20, 'status' => 'active', 'internal_id' => 'x99'],
+        ['first_name' => 'Jane', 'last_name' => 'Smith', 'age' => 30, 'status' => 'inactive', 'internal_id' => 'x42'],
+    ])
+    ->setNewMap([
+        'name' => fn($row) => $row['first_name'] . ' ' . $row['last_name'],
+        'age' => 'age',
+    ])
+    ->load(function($data) {
+        // $data contains ONLY 'name' and 'age' — no 'status', 'internal_id', etc.
+        echo json_encode($data) . PHP_EOL;
+    })
+    ->run();
+
+// Output:
+// {"name":"John Doe","age":20}
+// {"name":"Jane Smith","age":30}
+```
+
+### map() vs setNewMap()
+
+|                 | `map()`                                   | `setNewMap()`                                      |
+|-----------------|-------------------------------------------|----------------------------------------------------|
+| Original keys   | Preserved                                 | Discarded                                          |
+| Result contains | All original keys + mapped keys           | Only mapped keys                                   |
+| Use case        | Add/rename columns while keeping the rest | Reshape into a new structure, drop unwanted fields |
+
+## Preview
+
+`preview()` is a debugging helper that limits the pipeline to N rows and dumps
+each row's key and value. Use it to inspect the data structure at any point in
+the pipeline.
+
+```php
+(new DataFlow())
+    ->from([
+        ['name' => 'John', 'email' => 'john@example.com'],
+        ['name' => 'Jane', 'email' => 'jane@example.com'],
+        ['name' => 'Bob', 'email' => 'bob@example.com'],
+    ])
+    ->map(['full_name' => fn($row) => strtoupper($row['name'])])
+    ->preview(2) // show first 2 rows then stop
+    ->run();
+
+// Output:
+// Key: int(0)
+// Value: array(3) { ["name"]=> "John", ["email"]=> "john@example.com", ["full_name"]=> "JOHN" }
+//
+// Key: int(1)
+// Value: array(3) { ["name"]=> "Jane", ["email"]=> "jane@example.com", ["full_name"]=> "JANE" }
+```
+
+Insert `preview()` at any point to understand the data shape before writing the
+next stage.
 ## Flow Continuation
 
 Connecting flows into a chain.
@@ -167,6 +260,85 @@ $flow1 = (new DataFlow())
 // 18
 ```
 
+## Pipeline Result
+
+Every `run()` call returns a `PipelineResult` with execution metadata.
+
+```php
+use Simsoft\DataFlow\DataFlow;
+
+$result = (new DataFlow())
+    ->from([1, 2, 3, 4, 5])
+    ->transform(fn($n) => $n * 2)
+    ->load(fn($n) => $n)
+    ->run();
+
+echo "Processed: {$result->getProcessedRows()} rows\n";
+echo "Duration: " . round($result->getDurationMs()) . "ms\n";
+echo "Peak memory: " . round($result->getPeakMemoryBytes() / 1024) . " KB\n";
+```
+
+## Error Handling
+
+Configure per-stage error strategies for production resilience.
+
+```php
+use Simsoft\DataFlow\DataFlow;
+use Simsoft\DataFlow\Enums\ErrorStrategy;
+
+$result = (new DataFlow())
+    ->from($records)
+    ->transform(
+        (new MyTransformer())
+            ->withErrorStrategy(ErrorStrategy::Skip) // skip failing rows
+            ->withName('validator')
+    )
+    ->load(fn($row) => $row)
+    ->run();
+
+echo "Processed: {$result->getProcessedRows()}\n";
+echo "Failed: {$result->getFailedRows()}\n";
+```
+
+Available strategies: `Throw` (default), `Skip`, `Retry`, `LogAndContinue`.
+
+## Dry-Run Mode
+
+Validate pipelines without performing actual writes.
+
+```php
+$result = (new DataFlow())
+    ->from($records)
+    ->transform(fn($row) => $row)
+    ->load(new DatabaseLoader())
+    ->dryRun()
+    ->run();
+
+echo "Would process: {$result->getProcessedRows()} rows\n";
+// No data was actually written
+```
+
+## Logging & Progress
+
+Inject a PSR-3 logger and track progress on large datasets.
+
+```php
+use Simsoft\DataFlow\DataFlow;
+
+$result = (new DataFlow())
+    ->from($largeDataset)
+    ->withLogger($psrLogger)
+    ->onProgress(function (int $count, float $elapsedMs) {
+        echo "\r  Processed {$count} rows...";
+    }, interval: 1000)
+    ->onError(function (\Throwable $e, mixed $row, string $stage) {
+        error_log("[{$stage}] {$e->getMessage()}");
+    })
+    ->transform(fn($row) => $row)
+    ->load(fn($row) => $row)
+    ->run();
+```
+
 ## Advanced Usage
 
 1. [Using Closure](docs/01-USING_CLOSURE.md)
@@ -175,6 +347,14 @@ $flow1 = (new DataFlow())
 4. [Create Reusable Data Flow](docs/04-CONTROLLABLE_DATAFLOW.md)
 5. [Using Payload](docs/05-USING_PAYLOAD.md)
 6. [Macro & Mixin](docs/06-MACRO_AND_MIXIN.md)
+7. [Error Handling](docs/07-ERROR_HANDLING.md)
+8. [Observability & Metrics](docs/08-OBSERVABILITY.md)
+9. [Dry-Run Mode](docs/09-DRY_RUN.md)
+10. [Schema Validation](docs/10-SCHEMA_VALIDATION.md)
+11. [Circuit Breaker](docs/11-CIRCUIT_BREAKER.md)
+12. [Checkpoint & Resume](docs/12-CHECKPOINT_RESUME.md)
+13. [Metrics Exporter](docs/13-METRICS_EXPORTER.md)
+14. [Spreadsheet (PhpSpreadsheet)](docs/14-SPREADSHEET.md)
 
 ## License
 

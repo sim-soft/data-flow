@@ -1,3 +1,8 @@
+---
+title: Macro & Mixin
+nav_order: 6
+---
+
 # Macro and Mixin
 
 Add additional methods to Dataflow and processors.
@@ -50,18 +55,18 @@ try {
     error_log($throwable->getMessage());
 }
 
-\\ Output:
-\\ TITLE: NUMBER LIST
-\\ info: Number = 0
-\\ info: Number = 2
-\\ info: Number = 6
-\\ info: Number = 12
-\\ info: Number = 20
-\\ info: Number = 30
-\\ info: Number = 42
-\\ info: Number = 56
-\\ info: Number = 72
-\\ info: Number = 90
+// Output:
+// TITLE: NUMBER LIST
+// info: Number = 0
+// info: Number = 2
+// info: Number = 6
+// info: Number = 12
+// info: Number = 20
+// info: Number = 30
+// info: Number = 42
+// info: Number = 56
+// info: Number = 72
+// info: Number = 90
 ```
 
 ## Mixin
@@ -75,7 +80,9 @@ Extractor, Transformer and Loader.
 <?php
 require_once 'vendor/autoload.php';
 
+use Closure;
 use Simsoft\DataFlow\DataFlow;
+use Simsoft\DataFlow\Enums\Signal;
 use Simsoft\DataFlow\Transformer;
 use Throwable;
 
@@ -111,7 +118,7 @@ try {
                 return Signal::Next;
             }
 
-            $this->forwardMsg($number);    // Call method 'message' from CustomMixin class.
+            $this->forwardMsg($number);    // Call method 'forwardMsg' from CustomMixin class.
             return $number;
         })
         ->load(function(int $number){
@@ -123,20 +130,20 @@ try {
     error_log($throwable->getMessage());
 }
 
-\\ Output:
-\\ 1 is omitted
-\\ 2 is forwarded
-\\ Catch: 2
-\\ 3 is omitted
-\\ 4 is forwarded
-\\ Catch: 4
-\\ 5 is omitted
-\\ 6 is forwarded
-\\ Catch: 6
-\\ 7 is omitted
-\\ 8 is forwarded
-\\ Catch: 8
-\\ 9 is omitted
-\\ 10 is forwarded
-\\ Catch: 10
+// Output:
+// 1 is omitted
+// 2 is forwarded
+// Catch: 2
+// 3 is omitted
+// 4 is forwarded
+// Catch: 4
+// 5 is omitted
+// 6 is forwarded
+// Catch: 6
+// 7 is omitted
+// 8 is forwarded
+// Catch: 8
+// 9 is omitted
+// 10 is forwarded
+// Catch: 10
 ```

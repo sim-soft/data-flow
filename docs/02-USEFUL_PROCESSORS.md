@@ -1,3 +1,8 @@
+---
+title: Processors
+nav_order: 2
+---
+
 # Processors
 
 The package come with some useful processors.
@@ -65,15 +70,16 @@ $dataSource = fn() => yield from range(1, 10);
 
 ## SpoutExtractor
 
-Extract data from spreadsheet file.
+Extract data from spreadsheet file. Powered
+by [OpenSpout](https://github.com/openspout/openspout).
 
 ```php
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Extractors\SpoutExtractor;
 
 (new DataFlow())
-    ->from(new SpoutExtractor('/path/to/file.xlsx')) // or .xls, .csv
-    ->load(function(array $row, string $sheetName) {
+    ->from(new SpoutExtractor('/path/to/file.xlsx')) // or .csv, .ods
+    ->load(function(array $row, int|string $key) {
         echo $row['name'] . "\n";  // use header name as key to access row content.
     })
     ->run();
@@ -113,7 +119,7 @@ Extract file path only.
 ```php
 (new DataFlow())
     ->from((new FileFinderExtractor('/path/to/directory'))->recursive()->fileOnly()) // get file only.
-    ->load(function(FileAttributess $file) {
+    ->load(function(FileAttributes $file) {
         echo 'Is file' . $file->path() . "\n";
     })
     ->run();
@@ -128,8 +134,8 @@ Extract directory path only.
 
 ```php
 (new DataFlow())
-    ->from((new FileFinderExtractor('/path/to/directory'))->recursive()->directoryOnly()) // get file only.
-    ->load(function(FileAttributess $file) {
+    ->from((new FileFinderExtractor('/path/to/directory'))->recursive()->directoryOnly()) // get directory only.
+    ->load(function(DirectoryAttributes $file) {
         echo 'Is directory: ' . $file->path() . "\n";
     })
     ->run();
@@ -184,7 +190,9 @@ $query = User::find()->where('status', 'active')->where('age', '>', 20);
 
 ## SpoutLoader
 
-Load data into spreadsheet file using **mapping** method.
+Load data into spreadsheet file using **mapping** method. Powered
+by [OpenSpout](https://github.com/openspout/openspout). Supports dry-run mode —
+when enabled, rows are processed but no file is written.
 
 ```php
 use Simsoft\DataFlow\DataFlow;
@@ -208,7 +216,7 @@ Load data into spreadsheet file using **callback** method.
 
 ```php
 use Simsoft\DataFlow\DataFlow;
-use Simsoft\DataFlow\Loaders\SpreadsheetLoader;
+use Simsoft\DataFlow\Loaders\SpoutLoader;
 
 $query = User::find()->where('status', 'active')->where('age', '>', 20);
 
@@ -220,9 +228,9 @@ $query = User::find()->where('status', 'active')->where('age', '>', 20);
             'Gender' => $model->gender,
             'Age' => $model->age,
             'Email' => $model->email,
-        ]
+        ];
     })
-    ->load((new SpoutLoader('/path/to/users.xlsx'))
+    ->load(new SpoutLoader('/path/to/users.xlsx'))
     ->run();
 ```
 
@@ -246,7 +254,7 @@ $generator = function() {
 
 (new DataFlow())
     ->from($generator())
-    ->load((new SpoutLoader('/path/to/members.xlsx'))
+    ->load(new SpoutLoader('/path/to/members.xlsx'))
     ->run();
 ```
 
@@ -270,8 +278,9 @@ $generator = function() {
 
 (new DataFlow())
     ->from($generator())
-    ->load((new SpoutLoader('/path/to/members.xlsx'))
-        ->withHeaders(['gender' => 'Member Gender', 'name' => 'Full Name', 'age'], 'Profile') // Set headers for Profile sheet.
+    ->load(
+        (new SpoutLoader('/path/to/members.xlsx'))
+            ->withHeaders(['gender' => 'Member Gender', 'name' => 'Full Name', 'age'], 'Profile') // Set headers for Profile sheet.
     )
     ->run();
 ```

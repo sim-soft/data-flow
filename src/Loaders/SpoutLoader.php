@@ -2,16 +2,16 @@
 
 namespace Simsoft\DataFlow\Loaders;
 
-use Box\Spout\Common\Exception\IOException;
-use Box\Spout\Common\Exception\UnsupportedTypeException;
-use Box\Spout\Reader\Exception\ReaderNotOpenedException;
-use Box\Spout\Writer\Common\Creator\Style\StyleBuilder;
-use Box\Spout\Writer\Exception\InvalidSheetNameException;
-use Box\Spout\Writer\Exception\SheetNotFoundException;
-use Box\Spout\Writer\Exception\WriterNotOpenedException;
-use Box\Spout\Writer\WriterInterface;
 use Exception;
 use Iterator;
+use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Common\Exception\UnsupportedTypeException;
+use OpenSpout\Reader\Exception\ReaderNotOpenedException;
+use OpenSpout\Writer\Exception\InvalidSheetNameException;
+use OpenSpout\Writer\Exception\SheetNotFoundException;
+use OpenSpout\Writer\Exception\WriterNotOpenedException;
+use OpenSpout\Writer\WriterInterface;
+use Simsoft\DataFlow\Exceptions\LoaderException;
 use Simsoft\DataFlow\Loader;
 use Simsoft\Spreadsheet\SpoutIO;
 
@@ -37,11 +37,11 @@ class SpoutLoader extends Loader
      *
      * @param string $filepath
      * @param string $defaultSheetName
+     * @throws LoaderException
      */
     public function __construct(protected string $filepath, protected string $defaultSheetName = 'Sheet1')
     {
         try {
-
             if (str_contains($this->filepath, '.')) {
                 [$this->filepath, $this->extension] = explode('.', $this->filepath);
             }
@@ -54,7 +54,10 @@ class SpoutLoader extends Loader
 
             $this->spreadsheet = SpoutIO::createFromFile($this->filepath);
         } catch (IOException|UnsupportedTypeException $throwable) {
-            error_log($throwable->getMessage());
+            throw new LoaderException(
+                "Failed to create file for writing: {$this->filepath}",
+                previous: $throwable
+            );
         }
     }
 
@@ -101,7 +104,7 @@ class SpoutLoader extends Loader
             ->sheet($sheetName)
             ->addRow(
                 array_is_list($headers) ? $headers : array_values($headers),
-                (new StyleBuilder())->setFontBold()->build()
+                bold: true
             );
 
         return $this;
@@ -127,35 +130,60 @@ class SpoutLoader extends Loader
                 !is_array($data) && throw new UnsupportedTypeException('Data must be an array.');
 
                 if (array_is_list($data)) {
-                    $this->spreadsheet->sheet($sheetName)->addRow($data);
+                    if (!$this->isDryRun()) {
+                        $this->spreadsheet->sheet($sheetName)->addRow($data);
+                    }
                     yield $sheetName => $data;
                     continue;
                 }
 
-                if ($this->detectHeaders && !array_key_exists($sheetName, $headers)) {
-                    if (!array_key_exists($sheetName, $this->headers)) {
-                        $this->withHeaders(array_keys($data), $sheetName);
-                    }
+                $this->ensureHeaders($sheetName, $data, $headers);
 
-                    if (array_is_list($this->headers[$sheetName])) {
-                        $headers[$sheetName] = array_combine(
-                            $this->headers[$sheetName],
-                            array_fill(0, count($this->headers[$sheetName]), null)
-                        );
-                    }
-
-                    if (!array_key_exists($sheetName, $headers)) {
-                        foreach ($this->headers[$sheetName] as $fromLabel => $toLabel) {
-                            $headers[$sheetName][is_string($fromLabel) ? $fromLabel : $toLabel] = null;
-                        }
-                    }
+                if (!$this->isDryRun()) {
+                    $this->spreadsheet->sheet($sheetName)->addRow(array_merge($headers[$sheetName], $data));
                 }
-
-                $this->spreadsheet->sheet($sheetName)->addRow(array_merge($headers[$sheetName], $data));
                 yield $sheetName => $data;
             }
 
-            $this->getWriter()?->close();
+            if (!$this->isDryRun()) {
+                $this->getWriter()?->close();
+            }
+        }
+    }
+
+    /**
+     * Ensure headers are initialized for the given sheet.
+     *
+     * @param string $sheetName The sheet name.
+     * @param array<string, mixed> $data The current row data (used for auto-detection).
+     * @param array<string, array<string, null>> &$headers Reference to the headers map.
+     * @return void
+     * @throws IOException
+     * @throws InvalidSheetNameException
+     * @throws ReaderNotOpenedException
+     * @throws SheetNotFoundException
+     * @throws WriterNotOpenedException
+     */
+    private function ensureHeaders(string $sheetName, array $data, array &$headers): void
+    {
+        if (!$this->detectHeaders || array_key_exists($sheetName, $headers)) {
+            return;
+        }
+
+        if (!array_key_exists($sheetName, $this->headers)) {
+            $this->withHeaders(array_keys($data), $sheetName);
+        }
+
+        if (array_is_list($this->headers[$sheetName])) {
+            $headers[$sheetName] = array_combine(
+                $this->headers[$sheetName],
+                array_fill(0, count($this->headers[$sheetName]), null)
+            );
+            return;
+        }
+
+        foreach ($this->headers[$sheetName] as $fromLabel => $toLabel) {
+            $headers[$sheetName][is_string($fromLabel) ? $fromLabel : $toLabel] = null;
         }
     }
 }

@@ -1,3 +1,8 @@
+---
+title: Reusable DataFlow
+nav_order: 4
+---
+
 # Controllable Data Flow
 
 Create controllable/ reusable data flow.
@@ -50,7 +55,7 @@ class UserReminderFlow extends DataFlow
                 'Status' => $user->status,
                 'Expiry Date' => $user->expiry_date,
             ];
-        }
+        });
     }
 
     /**

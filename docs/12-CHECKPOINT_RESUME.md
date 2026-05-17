@@ -1,3 +1,8 @@
+---
+title: Checkpoint & Resume
+nav_order: 12
+---
+
 # Checkpoint & Resume
 
 Enable crash recovery for long-running pipelines. Checkpoints save progress to a

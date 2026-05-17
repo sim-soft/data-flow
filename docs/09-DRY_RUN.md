@@ -1,3 +1,8 @@
+---
+title: Dry-Run Mode
+nav_order: 9
+---
+
 # Dry-Run Mode
 
 Dry-run mode lets you validate a pipeline end-to-end without performing actual

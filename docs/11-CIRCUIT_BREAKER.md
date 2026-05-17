@@ -1,3 +1,8 @@
+---
+title: Circuit Breaker
+nav_order: 11
+---
+
 # Circuit Breaker
 
 Protect pipeline stages from cascading failures using the circuit breaker

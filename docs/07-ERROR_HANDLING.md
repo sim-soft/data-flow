@@ -1,3 +1,8 @@
+---
+title: Error Handling
+nav_order: 7
+---
+
 # Error Handling
 
 The DataFlow library provides configurable per-stage error handling strategies,

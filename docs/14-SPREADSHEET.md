@@ -1,3 +1,8 @@
+---
+title: Spreadsheet
+nav_order: 14
+---
+
 # Spreadsheet (PhpSpreadsheet)
 
 Read and write Excel files (.xlsx, .xls) using PhpSpreadsheet. For

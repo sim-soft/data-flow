@@ -1,3 +1,8 @@
+---
+title: Schema Validation
+nav_order: 10
+---
+
 # Schema Validation
 
 Validate row data inline using pipe-delimited rule strings, similar to Laravel's

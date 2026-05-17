@@ -1,3 +1,8 @@
+---
+title: Observability
+nav_order: 8
+---
+
 # Observability
 
 The DataFlow library supports PSR-3 logging, pipeline metrics, and progress

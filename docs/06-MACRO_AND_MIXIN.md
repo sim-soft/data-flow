@@ -1,3 +1,8 @@
+---
+title: Macro & Mixin
+nav_order: 6
+---
+
 # Macro and Mixin
 
 Add additional methods to Dataflow and processors.

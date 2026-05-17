@@ -4,6 +4,8 @@ A lightweight, composable ETL (Extract, Transform, Load) pipeline library for
 PHP 8.2+ with fluent API, error handling, observability, and spreadsheet
 support.
 
+📖 **[Full Documentation](https://simsoft.github.io/data-flow/)**
+
 ## Why This Library
 
 - **Fluent, composable API** — chain extractors, transformers, and loaders in a

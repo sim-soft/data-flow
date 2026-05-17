@@ -1,3 +1,8 @@
+---
+title: Metrics Exporter
+nav_order: 13
+---
+
 # Metrics Exporter
 
 Emit real-time pipeline metrics to external systems (logging, monitoring, custom

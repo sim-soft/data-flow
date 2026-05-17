@@ -1,3 +1,8 @@
+---
+title: Using Closure
+nav_order: 1
+---
+
 # Using Closure
 
 Closure is a convenience way to handling data in the DataFlow pipeline.

@@ -1,8 +1,8 @@
 title: Simsoft DataFlow
 description: A lightweight, composable ETL pipeline library for PHP 8.2+
-theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs
 
-url: https://simsoft.github.io
+url: https://sim-soft.github.io
 baseurl: /data-flow
 
 # Enable search
@@ -12,7 +12,7 @@ search.heading_level: 3
 # Aux links (top-right)
 aux_links:
   "GitHub":
-    - "https://github.com/simsoft/data-flow"
+    - "https://github.com/sim-soft/data-flow"
 
 aux_links_new_tab: true
 
@@ -37,3 +37,8 @@ nav_external_links:
 # Exclude files
 exclude:
   - img/
+  - Gemfile
+  - Gemfile.lock
+
+plugins:
+  - jekyll-remote-theme

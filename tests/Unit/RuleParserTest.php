@@ -159,4 +159,70 @@ class RuleParserTest extends TestCase
             $this->assertInstanceOf(ValidationRule::class, $rule);
         }
     }
+
+    public function test_custom_rule_can_be_registered_and_parsed(): void
+    {
+        $customRule = new class implements ValidationRule {
+            public function passes(mixed $value): bool
+            {
+                return $value === 'snowflake';
+            }
+
+            public function message(string $field): string
+            {
+                return "The {$field} must be the snowflake.";
+            }
+        };
+
+        RuleParser::register('snowflake', $customRule::class);
+
+        try {
+            $rules = RuleParser::parse('snowflake');
+
+            $this->assertCount(1, $rules);
+            $this->assertInstanceOf(ValidationRule::class, $rules[0]);
+            $this->assertTrue($rules[0]->passes('snowflake'));
+            $this->assertFalse($rules[0]->passes('not-it'));
+        } finally {
+            // Clean-up: remove the registration so other tests are not affected.
+            $reflection = new \ReflectionClass(RuleParser::class);
+            $registry = $reflection->getProperty('registry');
+            $registry->setAccessible(true);
+            $registry->setValue(null, null);
+        }
+    }
+
+    public function test_custom_rule_factory_receives_params(): void
+    {
+        $captured = null;
+
+        RuleParser::register(
+            'tagged',
+            \stdClass::class, // unused because factory provided
+            function (?string $params) use (&$captured): ValidationRule {
+                $captured = $params;
+                return new class implements ValidationRule {
+                    public function passes(mixed $value): bool
+                    {
+                        return true;
+                    }
+
+                    public function message(string $field): string
+                    {
+                        return "field {$field}";
+                    }
+                };
+            },
+        );
+
+        try {
+            RuleParser::parse('tagged:hello,world');
+            $this->assertSame('hello,world', $captured);
+        } finally {
+            $reflection = new \ReflectionClass(RuleParser::class);
+            $registry = $reflection->getProperty('registry');
+            $registry->setAccessible(true);
+            $registry->setValue(null, null);
+        }
+    }
 }

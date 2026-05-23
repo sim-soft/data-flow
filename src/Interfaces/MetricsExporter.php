@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow\Interfaces;
+
+use Throwable;
 
 /**
  * MetricsExporter Interface
@@ -19,10 +23,10 @@ interface MetricsExporter
      * Record a row that failed processing in a stage.
      *
      * @param string $stageName
-     * @param string $errorMessage
+     * @param Throwable $error
      * @return void
      */
-    public function recordRowFailed(string $stageName, string $errorMessage): void;
+    public function recordRowFailed(string $stageName, Throwable $error): void;
 
     /**
      * Record the duration of a stage's execution.

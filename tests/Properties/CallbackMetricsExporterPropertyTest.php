@@ -6,8 +6,10 @@ use Generator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Simsoft\DataFlow\Metrics\CallbackMetricsExporter;
 use Simsoft\DataFlow\Tests\TestCase;
+use Throwable;
 
 /**
  * CallbackMetricsExporterPropertyTest
@@ -75,8 +77,12 @@ class CallbackMetricsExporterPropertyTest extends TestCase
             onRowProcessed: function (string $stage) use (&$rowProcessedParams) {
                 $rowProcessedParams = ['stageName' => $stage];
             },
-            onRowFailed: function (string $stage, string $error) use (&$rowFailedParams) {
-                $rowFailedParams = ['stageName' => $stage, 'errorMessage' => $error];
+            onRowFailed: function (string $stage, Throwable $error) use (&$rowFailedParams) {
+                $rowFailedParams = [
+                    'stageName' => $stage,
+                    'errorMessage' => $error->getMessage(),
+                    'errorClass' => get_class($error),
+                ];
             },
             onStageDuration: function (string $stage, float $duration) use (&$stageDurationParams) {
                 $stageDurationParams = ['stageName' => $stage, 'durationMs' => $duration];
@@ -92,7 +98,7 @@ class CallbackMetricsExporterPropertyTest extends TestCase
 
         // Invoke each method with the random parameters
         $exporter->recordRowProcessed($stageName);
-        $exporter->recordRowFailed($stageName, $errorMessage);
+        $exporter->recordRowFailed($stageName, new RuntimeException($errorMessage));
         $exporter->recordStageDuration($stageName, $durationMs);
         $exporter->recordPipelineComplete($totalDurationMs, $processedRows, $failedRows);
 
@@ -115,6 +121,11 @@ class CallbackMetricsExporterPropertyTest extends TestCase
             $errorMessage,
             $rowFailedParams['errorMessage'],
             'recordRowFailed must forward the exact errorMessage to the closure',
+        );
+        $this->assertSame(
+            RuntimeException::class,
+            $rowFailedParams['errorClass'],
+            'recordRowFailed must forward the throwable instance to the closure',
         );
 
         // Assert recordStageDuration forwarded exact parameters in correct order

@@ -20,6 +20,7 @@ class CheckpointDataTest extends TestCase
         $this->assertSame(42, $data->lastRowIndex);
         $this->assertSame(1700000000, $data->timestamp);
         $this->assertSame('transform', $data->stageName);
+        $this->assertSame(CheckpointData::CURRENT_VERSION, $data->version);
     }
 
     public function test_toJson_serializes_all_properties(): void
@@ -38,11 +39,13 @@ class CheckpointDataTest extends TestCase
         $this->assertSame(100, $decoded['lastRowIndex']);
         $this->assertSame(1700000000, $decoded['timestamp']);
         $this->assertSame('loader', $decoded['stageName']);
+        $this->assertSame(CheckpointData::CURRENT_VERSION, $decoded['version']);
     }
 
     public function test_fromJson_parses_valid_json(): void
     {
         $json = json_encode([
+            'version' => CheckpointData::CURRENT_VERSION,
             'pipelineId' => 'pipe-002',
             'lastRowIndex' => 200,
             'timestamp' => 1700000000,
@@ -56,6 +59,7 @@ class CheckpointDataTest extends TestCase
         $this->assertSame(200, $data->lastRowIndex);
         $this->assertSame(1700000000, $data->timestamp);
         $this->assertSame('extractor', $data->stageName);
+        $this->assertSame(CheckpointData::CURRENT_VERSION, $data->version);
     }
 
     public function test_fromJson_returns_null_for_invalid_json(): void
@@ -77,10 +81,37 @@ class CheckpointDataTest extends TestCase
     public function test_fromJson_returns_null_for_wrong_types(): void
     {
         $json = json_encode([
+            'version' => CheckpointData::CURRENT_VERSION,
             'pipelineId' => 123,
             'lastRowIndex' => 'not-int',
             'timestamp' => 'not-int',
             'stageName' => 456,
+        ]);
+
+        $this->assertNull(CheckpointData::fromJson($json));
+    }
+
+    public function test_fromJson_returns_null_when_version_field_is_missing(): void
+    {
+        // No version field at all — incompatible legacy checkpoint.
+        $json = json_encode([
+            'pipelineId' => 'pipe-legacy',
+            'lastRowIndex' => 100,
+            'timestamp' => 1700000000,
+            'stageName' => 'extract',
+        ]);
+
+        $this->assertNull(CheckpointData::fromJson($json));
+    }
+
+    public function test_fromJson_returns_null_for_mismatched_version(): void
+    {
+        $json = json_encode([
+            'version' => CheckpointData::CURRENT_VERSION + 1,
+            'pipelineId' => 'pipe-future',
+            'lastRowIndex' => 100,
+            'timestamp' => 1700000000,
+            'stageName' => 'extract',
         ]);
 
         $this->assertNull(CheckpointData::fromJson($json));
@@ -102,5 +133,6 @@ class CheckpointDataTest extends TestCase
         $this->assertSame($original->lastRowIndex, $restored->lastRowIndex);
         $this->assertSame($original->timestamp, $restored->timestamp);
         $this->assertSame($original->stageName, $restored->stageName);
+        $this->assertSame($original->version, $restored->version);
     }
 }

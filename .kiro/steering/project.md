@@ -1,6 +1,6 @@
 # Project Context
 
-**simsoft/data-flow** — composable ETL pipeline library for PHP ≥ 8.2.
+**simsoft/data-flow** — composable ETL pipeline library for PHP ≥ 8.3.
 
 ## Architecture
 

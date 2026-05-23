@@ -9,11 +9,18 @@ namespace Simsoft\DataFlow;
  */
 final readonly class CheckpointData
 {
+    /**
+     * Current checkpoint format version. Bumped when the on-disk schema changes
+     * incompatibly so that older checkpoints can be detected and rejected.
+     */
+    public const int CURRENT_VERSION = 1;
+
     public function __construct(
         public string $pipelineId,
         public int    $lastRowIndex,
         public int    $timestamp,
         public string $stageName,
+        public int $version = self::CURRENT_VERSION,
     )
     {
     }
@@ -21,7 +28,8 @@ final readonly class CheckpointData
     /**
      * Parse a JSON string into a CheckpointData instance.
      *
-     * Returns null if the JSON is invalid or missing required fields.
+     * Returns null if the JSON is invalid, missing required fields, or has an
+     * incompatible (missing or mismatched) version.
      */
     public static function fromJson(string $json): ?self
     {
@@ -32,7 +40,8 @@ final readonly class CheckpointData
         }
 
         if (
-            !array_key_exists('pipelineId', $data)
+            !array_key_exists('version', $data)
+            || !array_key_exists('pipelineId', $data)
             || !array_key_exists('lastRowIndex', $data)
             || !array_key_exists('timestamp', $data)
             || !array_key_exists('stageName', $data)
@@ -41,11 +50,16 @@ final readonly class CheckpointData
         }
 
         if (
-            !is_string($data['pipelineId'])
+            !is_int($data['version'])
+            || !is_string($data['pipelineId'])
             || !is_int($data['lastRowIndex'])
             || !is_int($data['timestamp'])
             || !is_string($data['stageName'])
         ) {
+            return null;
+        }
+
+        if ($data['version'] !== self::CURRENT_VERSION) {
             return null;
         }
 
@@ -54,6 +68,7 @@ final readonly class CheckpointData
             lastRowIndex: $data['lastRowIndex'],
             timestamp: $data['timestamp'],
             stageName: $data['stageName'],
+            version: $data['version'],
         );
     }
 
@@ -63,6 +78,7 @@ final readonly class CheckpointData
     public function toJson(): string
     {
         return json_encode([
+            'version' => $this->version,
             'pipelineId' => $this->pipelineId,
             'lastRowIndex' => $this->lastRowIndex,
             'timestamp' => $this->timestamp,

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow;
 
 use DateTimeImmutable;
@@ -188,6 +190,10 @@ final class PipelineExecutor
     /**
      * Generate a deterministic pipeline ID from stage names.
      *
+     * Delegates to {@see CheckpointManager::generatePipelineId()} to ensure a
+     * single source of truth for the hashing algorithm used by the pipeline
+     * and the checkpoint manager.
+     *
      * @param Processor[] $stages
      * @return string
      */
@@ -198,7 +204,7 @@ final class PipelineExecutor
             $stages,
         );
 
-        return hash('sha256', json_encode($stageNames, JSON_THROW_ON_ERROR));
+        return CheckpointManager::generatePipelineId($stageNames);
     }
 
     /**

@@ -75,7 +75,7 @@ class MetricsExporterEventCountsPropertyTest extends TestCase
             onRowProcessed: function (string $stageName) use (&$actualProcessed): void {
                 $actualProcessed++;
             },
-            onRowFailed: function (string $stageName, string $errorMessage) use (&$actualFailed): void {
+            onRowFailed: function (string $stageName, \Throwable $error) use (&$actualFailed): void {
                 $actualFailed++;
             },
             onStageDuration: function (string $stageName, float $durationMs) use (&$actualDuration): void {
@@ -90,7 +90,7 @@ class MetricsExporterEventCountsPropertyTest extends TestCase
 
         // Invoke recordRowFailed the expected number of times
         for ($j = 0; $j < $failedCount; $j++) {
-            $exporter->recordRowFailed('stage_' . ($j % 3), 'error_' . $j);
+            $exporter->recordRowFailed('stage_' . ($j % 3), new \RuntimeException('error_' . $j));
         }
 
         // Invoke recordStageDuration the expected number of times

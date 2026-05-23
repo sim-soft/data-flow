@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow;
 
 use Simsoft\DataFlow\Enums\ErrorStrategy;
@@ -14,8 +16,8 @@ abstract class Processor implements Flowable
 {
     use Macroable;
 
-    /** @var DataFlow The current flow object. */
-    private DataFlow $flow;
+    /** @var DataFlow|null The current flow object. */
+    private ?DataFlow $flow = null;
 
     /** @var ErrorStrategy The error handling strategy for this processor. */
     private ErrorStrategy $errorStrategy = ErrorStrategy::Throw;
@@ -44,9 +46,9 @@ abstract class Processor implements Flowable
     /**
      * Get current flow object.
      *
-     * @return DataFlow
+     * @return DataFlow|null
      */
-    public function getFlow(): DataFlow
+    public function getFlow(): ?DataFlow
     {
         return $this->flow;
     }

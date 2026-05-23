@@ -20,13 +20,13 @@ With DataFlow, you describe your pipeline as a fluent chain:
 
 No framework required. No external services. Just PHP.
 
-## Install
+# Install
 
 ```bash
 composer require simsoft/data-flow
 ```
 
-## Quick Start
+# Quick Start
 
 ```php
 use Simsoft\DataFlow\DataFlow;
@@ -41,7 +41,7 @@ use Simsoft\DataFlow\DataFlow;
 // Output: 6, 8, 10
 ```
 
-## Why This Library
+# Why This Library
 
 - **Fluent, composable API** — chain extractors, transformers, and loaders in a
   single readable expression

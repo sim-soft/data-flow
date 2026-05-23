@@ -1,7 +1,5 @@
 - **Introduction**
-    - [Install](/?id=install)
-    - [Quick Start](/?id=quick-start)
-    - [Why This Library](/?id=why-this-library)
+    - [About](README.md)
 
 - **Getting Started**
     - [Using Closure](01-USING_CLOSURE.md)

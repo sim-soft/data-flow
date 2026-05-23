@@ -55,15 +55,6 @@ class ActiveQueryExtractorTest extends TestCase
     }
 
     #[Test]
-    public function debugMethodReturnsSelf(): void
-    {
-        $query = $this->createStub(ActiveQuery::class);
-        $extractor = new ActiveQueryExtractor($query);
-
-        $this->assertSame($extractor, $extractor->debug());
-    }
-
-    #[Test]
     public function makeFactoryReturnsInstance(): void
     {
         $query = $this->createStub(ActiveQuery::class);

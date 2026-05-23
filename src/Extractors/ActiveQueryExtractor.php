@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow\Extractors;
 
 use Simsoft\DataFlow\Extractor;
 use Iterator;
-use Simsoft\DB\MySQL\Builder\ActiveQuery;
+use Simsoft\DB\Builder\ActiveQuery;
 
 /**
  * ActiveQueryExtractor class
@@ -16,8 +18,6 @@ class ActiveQueryExtractor extends Extractor
 
     /** @var int Maximum size of data per loop. */
     protected int $size = 100;
-
-    protected bool $debugMode = false;
 
     /**
      * Constructor.
@@ -39,18 +39,6 @@ class ActiveQueryExtractor extends Extractor
     public static function make(ActiveQuery $query, int $size = 100): static
     {
         return (new static($query))->size($size);
-    }
-
-    /**
-     * Debug by showing full SQL query.
-     *
-     * @return $this
-     */
-    public function debug(): static
-    {
-        //print 'Query SQL: ' . (clone $this->query)->getFullSQL() . "\n"  ;
-        $this->debugMode = true;
-        return $this;
     }
 
     /**
@@ -82,9 +70,6 @@ class ActiveQueryExtractor extends Extractor
     public function __invoke(?Iterator $dataFrame = null): Iterator
     {
         $collection = $this->query->each($this->size);
-        if ($this->debugMode) {
-            $collection->debug();
-        }
 
         if ($this->toArray) {
             $collection->toArray();

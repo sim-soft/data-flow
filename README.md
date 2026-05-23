@@ -1,8 +1,24 @@
-# Introduction
+# Simsoft DataFlow
 
-A lightweight, composable ETL (Extract, Transform, Load) pipeline library for
-PHP 8.2+ with fluent API, error handling, observability, and spreadsheet
-support.
+> A lightweight, composable ETL pipeline library for PHP 8.3+
+
+**DataFlow** helps you move data from one place to another — read from a
+source (database, CSV, API), transform it (filter, map, validate, enrich), and
+write it to a destination (database, spreadsheet, file). This pattern is called
+**ETL** (Extract, Transform, Load) and is the backbone of data migration,
+reporting, syncing, and batch processing.
+
+With DataFlow, you describe your pipeline as a fluent chain:
+
+```php
+(new DataFlow())
+    ->from($source)         // Extract: where data comes from
+    ->transform($logic)     // Transform: reshape, filter, validate
+    ->load($destination)    // Load: where data goes
+    ->run();
+```
+
+No framework required. No external services. Just PHP.
 
 📖 **[Full Documentation](https://sim-soft.github.io/data-flow/)**
 

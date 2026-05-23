@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow\Metrics;
 
 use Closure;
 use Simsoft\DataFlow\Interfaces\MetricsExporter;
+use Throwable;
 
 /**
  * CallbackMetricsExporter - Invokes user-supplied closures for each metric event.
@@ -29,10 +32,10 @@ final class CallbackMetricsExporter implements MetricsExporter
         }
     }
 
-    public function recordRowFailed(string $stageName, string $errorMessage): void
+    public function recordRowFailed(string $stageName, Throwable $error): void
     {
         if ($this->onRowFailed !== null) {
-            ($this->onRowFailed)($stageName, $errorMessage);
+            ($this->onRowFailed)($stageName, $error);
         }
     }
 

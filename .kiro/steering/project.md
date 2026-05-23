@@ -1,6 +1,6 @@
 # Project Context
 
-**simsoft/data-flow** — composable ETL pipeline library for PHP ≥ 8.2.
+**simsoft/data-flow** — composable ETL pipeline library for PHP ≥ 8.3.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ src/                          # PSR-4: Simsoft\DataFlow\
 ├── Loaders/                  # Preview, Visualize, Spout, Spreadsheet
 ├── Interfaces/Flowable.php
 └── Traits/                   # DataFrame, CallableDataFrame, Macroable
-simsoft/                      # Vendored packages (Box\Spout, DB\MySQL, Spreadsheet)
+simsoft/                      # Vendored packages (FLIQ ORM, Spreadsheet)
 tests/                        # PHPUnit suite
 ```
 
@@ -40,8 +40,7 @@ tests/                        # PHPUnit suite
 
 See `composer.json`. Key: `phpoffice/phpspreadsheet`, `league/flysystem`,
 `symfony/cache`.
-Vendored: `simsoft/box/spout` (Box\Spout), `simsoft/db-mysql`,
-`simsoft/spreadsheet`.
+Vendored: `simsoft/fliq` (DB ORM), `simsoft/spreadsheet`.
 
 ## Commands
 

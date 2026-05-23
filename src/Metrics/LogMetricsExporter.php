@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow\Metrics;
 
 use Psr\Log\LoggerInterface;
 use Simsoft\DataFlow\Interfaces\MetricsExporter;
+use Throwable;
 
 /**
  * LogMetricsExporter - Writes pipeline metrics as structured log entries via PSR-3.
@@ -24,11 +27,13 @@ final class LogMetricsExporter implements MetricsExporter
         ]);
     }
 
-    public function recordRowFailed(string $stageName, string $errorMessage): void
+    public function recordRowFailed(string $stageName, Throwable $error): void
     {
         $this->logger->warning('Row failed', [
             'stage' => $stageName,
-            'error' => $errorMessage,
+            'exception_class' => get_class($error),
+            'error' => $error->getMessage(),
+            'trace' => $error->getTraceAsString(),
             'event' => 'row_failed',
         ]);
     }

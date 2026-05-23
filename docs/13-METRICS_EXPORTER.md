@@ -1,8 +1,3 @@
----
-title: Metrics Exporter
-parent: Observability
-nav_order: 2
----
 
 # Metrics Exporter
 

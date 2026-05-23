@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow\Transformers;
 
 use Simsoft\DataFlow\Transformer;

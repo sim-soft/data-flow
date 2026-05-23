@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Simsoft\DataFlow\Metrics\LogMetricsExporter;
 use Simsoft\DataFlow\Tests\TestCase;
 
@@ -125,11 +126,14 @@ class LogMetricsExporterPropertyTest extends TestCase
             });
 
         $exporter = new LogMetricsExporter($logger);
-        $exporter->recordRowFailed($stageName, $errorMessage);
+        $error = new RuntimeException($errorMessage);
+        $exporter->recordRowFailed($stageName, $error);
 
         $this->assertNotNull($capturedContext, 'Logger warning() must be called');
         $this->assertArrayHasKey('stage', $capturedContext, 'Context must contain "stage" key');
         $this->assertArrayHasKey('error', $capturedContext, 'Context must contain "error" key');
+        $this->assertArrayHasKey('exception_class', $capturedContext, 'Context must contain "exception_class" key');
+        $this->assertArrayHasKey('trace', $capturedContext, 'Context must contain "trace" key');
         $this->assertSame(
             $stageName,
             $capturedContext['stage'],
@@ -139,6 +143,11 @@ class LogMetricsExporterPropertyTest extends TestCase
             $errorMessage,
             $capturedContext['error'],
             "Context 'error' must equal the provided error message",
+        );
+        $this->assertSame(
+            RuntimeException::class,
+            $capturedContext['exception_class'],
+            "Context 'exception_class' must equal the throwable's class name",
         );
     }
 

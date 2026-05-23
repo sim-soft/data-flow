@@ -38,6 +38,7 @@ final class CheckpointManager
             lastRowIndex: $lastRowIndex,
             timestamp: time(),
             stageName: $stageName,
+            version: CheckpointData::CURRENT_VERSION,
         );
 
         $json = $checkpoint->toJson();

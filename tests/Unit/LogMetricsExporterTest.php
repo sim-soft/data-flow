@@ -43,12 +43,14 @@ class LogMetricsExporterTest extends TestCase
                 $this->anything(),
                 $this->callback(function (array $context) {
                     return $context['stage'] === 'loader'
-                        && $context['error'] === 'Connection timeout';
+                        && $context['error'] === 'Connection timeout'
+                        && $context['exception_class'] === \RuntimeException::class
+                        && isset($context['trace']);
                 }),
             );
 
         $exporter = new LogMetricsExporter($logger);
-        $exporter->recordRowFailed('loader', 'Connection timeout');
+        $exporter->recordRowFailed('loader', new \RuntimeException('Connection timeout'));
     }
 
     public function test_record_stage_duration_logs_info_with_stage_and_duration(): void
@@ -103,6 +105,6 @@ class LogMetricsExporterTest extends TestCase
         $logger->expects($this->once())->method('warning');
 
         $exporter = new LogMetricsExporter($logger);
-        $exporter->recordRowFailed('stage1', 'some error');
+        $exporter->recordRowFailed('stage1', new \RuntimeException('some error'));
     }
 }

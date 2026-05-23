@@ -1,8 +1,3 @@
----
-title: Payload
-parent: Features
-nav_order: 1
----
 
 # Using Payload
 

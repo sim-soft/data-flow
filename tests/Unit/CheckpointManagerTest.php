@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Simsoft\DataFlow\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Simsoft\DataFlow\CheckpointManager;

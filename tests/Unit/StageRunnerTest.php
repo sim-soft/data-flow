@@ -271,7 +271,7 @@ class StageRunnerTest extends TestCase
         $this->assertSame(CircuitState::Open, $states['cb-recovery-stage']);
 
         // Wait for cooldown to elapse
-        usleep(2000); // 2ms
+        usleep(5000); // 5ms
 
         // Second pass: circuit should transition to HalfOpen and allow probe call
         $input2 = new ArrayIterator([
@@ -383,7 +383,10 @@ class StageRunnerTest extends TestCase
         $metricsExporter = $this->createMock(MetricsExporter::class);
         $metricsExporter->expects($this->once())
             ->method('recordRowFailed')
-            ->with('metrics-stage', $this->stringContains('Row error'));
+            ->with(
+                'metrics-stage',
+                $this->callback(static fn(\Throwable $error): bool => $error->getMessage() === 'Row error'),
+            );
 
         $stage = $this->createFailingTransformer('Row error');
         $stage->withName('metrics-stage');

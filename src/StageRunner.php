@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow;
 
 use ArrayIterator;
@@ -48,6 +50,12 @@ final class StageRunner
      * Integrates circuit breaker logic: skips rows when circuit is Open,
      * records successes/failures to the breaker.
      * Logs stage boundary messages and row-level failures at appropriate levels.
+     *
+     * ⚠️ Caveat: Stateful transformers (such as {@see \Simsoft\DataFlow\Transformers\Chunk})
+     * are invoked per-row when the error strategy is non-Throw. Each row is
+     * wrapped in a single-row {@see \ArrayIterator}, which breaks transformers
+     * that buffer state across rows. Use {@see \Simsoft\DataFlow\Enums\ErrorStrategy::Throw}
+     * for stateful transformers, or split them into separate pipelines.
      *
      * @param Processor $stage The stage processor to run.
      * @param Iterator|null $input The input iterator for the stage.
@@ -162,7 +170,7 @@ final class StageRunner
             // Circuit breaker check: skip row if circuit is Open
             if ($circuitBreaker !== null && !$circuitBreaker->isCallAllowed()) {
                 $this->recordCircuitOpenSkip($deadLetters, $row, $stageName, $rowIndex);
-                $metricsExporter->recordRowFailed($stageName, 'circuit-open');
+                $metricsExporter->recordRowFailed($stageName, new RuntimeException('circuit-open'));
                 $logger->debug("Row {$rowIndex} skipped in stage '{$stageName}': circuit-open");
                 continue;
             }
@@ -199,7 +207,7 @@ final class StageRunner
 
                     if ($resolved === null) {
                         $circuitBreaker?->recordFailure();
-                        $metricsExporter->recordRowFailed($stageName, $exception->getMessage());
+                        $metricsExporter->recordRowFailed($stageName, $exception);
                         continue;
                     }
 
@@ -214,7 +222,7 @@ final class StageRunner
                 $this->logWarning($logger, $rowIndex, $stageName, $exception);
                 $this->recordFailure($deadLetters, $row, $stageName, $rowIndex, $exception);
                 $this->invokeOnError($onError, $exception, $row, $stageName);
-                $metricsExporter->recordRowFailed($stageName, $exception->getMessage());
+                $metricsExporter->recordRowFailed($stageName, $exception);
 
                 if ($strategy === ErrorStrategy::LogAndContinue) {
                     $rowCount++;
@@ -287,7 +295,7 @@ final class StageRunner
                         $circuitBreaker,
                     );
 
-                    $metricsExporter->recordRowFailed($stageName, $exception->getMessage());
+                    $metricsExporter->recordRowFailed($stageName, $exception);
 
                     try {
                         $output->next();
@@ -301,7 +309,7 @@ final class StageRunner
                 $this->logWarning($logger, $rowIndex, $stageName, $exception);
                 $this->recordFailure($deadLetters, null, $stageName, $rowIndex, $exception);
                 $this->invokeOnError($onError, $exception, null, $stageName);
-                $metricsExporter->recordRowFailed($stageName, $exception->getMessage());
+                $metricsExporter->recordRowFailed($stageName, $exception);
 
                 try {
                     $output->next();
@@ -316,7 +324,7 @@ final class StageRunner
             // Circuit breaker check for extractor rows
             if ($circuitBreaker !== null && !$circuitBreaker->isCallAllowed()) {
                 $this->recordCircuitOpenSkip($deadLetters, $row, $stageName, $rowIndex);
-                $metricsExporter->recordRowFailed($stageName, 'circuit-open');
+                $metricsExporter->recordRowFailed($stageName, new RuntimeException('circuit-open'));
                 $logger->debug("Row {$rowIndex} skipped in stage '{$stageName}': circuit-open");
 
                 try {

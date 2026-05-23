@@ -1,8 +1,3 @@
----
-title: Macro & Mixin
-parent: Extensibility
-nav_order: 1
----
 
 # Macro and Mixin
 

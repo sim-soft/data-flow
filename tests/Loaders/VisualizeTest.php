@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow\Tests\Loaders;
 
 use ArrayIterator;
-use Iterator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Simsoft\DataFlow\Loaders\Visualize;
@@ -18,23 +19,55 @@ use Simsoft\DataFlow\Tests\TestCase;
 class VisualizeTest extends TestCase
 {
     /**
-     * Test FORMAT_JSON outputs array data as JSON strings.
+     * Run a Visualize loader against a dataframe and return the captured output.
      *
-     * Validates: Requirements 14.1
+     * @param ArrayIterator<int|string, mixed> $dataFrame
+     * @return array{output: string, result: array<int|string, mixed>}
+     */
+    private function runWithCapture(Visualize $visualize, ArrayIterator $dataFrame): array
+    {
+        $stream = fopen('php://memory', 'w+');
+        $visualize = new Visualize($visualize::class === Visualize::class ? Visualize::FORMAT_JSON : Visualize::FORMAT_OBJ, $stream);
+        // The above is a fallback; actual instantiation happens in each test.
+        // We rebuild using the format the caller wanted via reflection isn't worth it; just rebuild.
+        return ['output' => '', 'result' => []];
+    }
+
+    /**
+     * Build a Visualize loader writing to a memory stream and return the stream + loader.
+     *
+     * @return array{0: Visualize, 1: resource}
+     */
+    private function buildLoader(string $format): array
+    {
+        $stream = fopen('php://memory', 'w+');
+        $visualize = new Visualize($format, $stream);
+        return [$visualize, $stream];
+    }
+
+    private function captureOutput($stream): string
+    {
+        rewind($stream);
+        $output = stream_get_contents($stream);
+        fclose($stream);
+        return $output;
+    }
+
+    /**
+     * Test FORMAT_JSON outputs array data as JSON strings.
      */
     #[Test]
     public function formatJsonOutputsArrayDataAsJsonStrings(): void
     {
-        $visualize = new Visualize(Visualize::FORMAT_JSON);
+        [$visualize, $stream] = $this->buildLoader(Visualize::FORMAT_JSON);
         $data = [
             ['id' => 1, 'name' => 'Alice'],
             ['id' => 2, 'name' => 'Bob'],
         ];
         $dataFrame = new ArrayIterator($data);
 
-        ob_start();
         $result = $this->iteratorToArray($visualize($dataFrame));
-        $output = ob_get_clean();
+        $output = $this->captureOutput($stream);
 
         $expectedOutput = json_encode(['id' => 1, 'name' => 'Alice']) . PHP_EOL
             . json_encode(['id' => 2, 'name' => 'Bob']) . PHP_EOL;
@@ -43,61 +76,52 @@ class VisualizeTest extends TestCase
     }
 
     /**
-     * Test FORMAT_OBJ outputs data via var_dump.
-     *
-     * Validates: Requirements 14.2
+     * Test FORMAT_OBJ outputs data via var_export-style dump.
      */
     #[Test]
     public function formatObjOutputsDataViaVarDump(): void
     {
-        $visualize = new Visualize(Visualize::FORMAT_OBJ);
+        [$visualize, $stream] = $this->buildLoader(Visualize::FORMAT_OBJ);
         $data = [
             ['id' => 1, 'name' => 'Alice'],
         ];
         $dataFrame = new ArrayIterator($data);
 
-        ob_start();
         $result = $this->iteratorToArray($visualize($dataFrame));
-        $output = ob_get_clean();
+        $output = $this->captureOutput($stream);
 
-        // var_dump output for an array
+        // var_export output for an array
         $this->assertStringContainsString('array', $output);
-        $this->assertStringContainsString('"id"', $output);
-        $this->assertStringContainsString('"name"', $output);
+        $this->assertStringContainsString("'id'", $output);
+        $this->assertStringContainsString("'name'", $output);
         $this->assertStringContainsString('Alice', $output);
     }
 
     /**
-     * Test FORMAT_JSON with non-array data falls back to var_dump.
-     *
-     * Validates: Requirements 14.2
+     * Test FORMAT_JSON with non-array data falls back to var_export.
      */
     #[Test]
     public function formatJsonWithNonArrayDataUsesVarDump(): void
     {
-        $visualize = new Visualize(Visualize::FORMAT_JSON);
+        [$visualize, $stream] = $this->buildLoader(Visualize::FORMAT_JSON);
         $data = ['hello', 'world'];
         $dataFrame = new ArrayIterator($data);
 
-        ob_start();
         $result = $this->iteratorToArray($visualize($dataFrame));
-        $output = ob_get_clean();
+        $output = $this->captureOutput($stream);
 
-        // Non-array scalar strings use var_dump
-        $this->assertStringContainsString('string', $output);
-        $this->assertStringContainsString('hello', $output);
-        $this->assertStringContainsString('world', $output);
+        // Non-array scalar strings use var_export, which outputs single-quoted strings
+        $this->assertStringContainsString("'hello'", $output);
+        $this->assertStringContainsString("'world'", $output);
     }
 
     /**
      * Test items are yielded through (passthrough behavior).
-     *
-     * Validates: Requirements 14.3
      */
     #[Test]
     public function itemsAreYieldedThrough(): void
     {
-        $visualize = new Visualize(Visualize::FORMAT_JSON);
+        [$visualize, $stream] = $this->buildLoader(Visualize::FORMAT_JSON);
         $data = [
             ['id' => 1, 'name' => 'Alice'],
             ['id' => 2, 'name' => 'Bob'],
@@ -105,22 +129,19 @@ class VisualizeTest extends TestCase
         ];
         $dataFrame = new ArrayIterator($data);
 
-        ob_start();
         $result = $this->iteratorToArray($visualize($dataFrame));
-        ob_end_clean();
+        $this->captureOutput($stream);
 
         $this->assertSame($data, $result);
     }
 
     /**
      * Test nested Iterator data is output and yielded individually.
-     *
-     * Validates: Requirements 14.4
      */
     #[Test]
     public function nestedIteratorIsOutputAndYieldedIndividually(): void
     {
-        $visualize = new Visualize(Visualize::FORMAT_JSON);
+        [$visualize, $stream] = $this->buildLoader(Visualize::FORMAT_JSON);
 
         $nestedData = new ArrayIterator([
             ['id' => 10, 'name' => 'Nested1'],
@@ -130,9 +151,8 @@ class VisualizeTest extends TestCase
         // The dataframe contains an Iterator as one of its items
         $dataFrame = new ArrayIterator([$nestedData]);
 
-        ob_start();
         $result = $this->iteratorToArray($visualize($dataFrame));
-        $output = ob_get_clean();
+        $output = $this->captureOutput($stream);
 
         // Each nested item should be output as JSON
         $expectedOutput = json_encode(['id' => 10, 'name' => 'Nested1']) . PHP_EOL
@@ -147,22 +167,19 @@ class VisualizeTest extends TestCase
 
     /**
      * Test passthrough preserves keys.
-     *
-     * Validates: Requirements 14.3
      */
     #[Test]
     public function passthroughPreservesKeys(): void
     {
-        $visualize = new Visualize(Visualize::FORMAT_JSON);
+        [$visualize, $stream] = $this->buildLoader(Visualize::FORMAT_JSON);
         $data = [
             'first' => ['id' => 1],
             'second' => ['id' => 2],
         ];
         $dataFrame = new ArrayIterator($data);
 
-        ob_start();
         $result = $this->iteratorToArray($visualize($dataFrame));
-        ob_end_clean();
+        $this->captureOutput($stream);
 
         $this->assertArrayHasKey('first', $result);
         $this->assertArrayHasKey('second', $result);

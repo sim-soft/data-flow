@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\DataFlow;
 
 use InvalidArgumentException;
@@ -45,6 +47,10 @@ final readonly class RetryConfig
      *
      * When exponential=true: base_delay × 2^(attempt-1), clamped to maxDelay.
      * When exponential=false: returns the constant base delay.
+     *
+     * To prevent integer overflow on very large attempt counts, the exponent
+     * is capped internally at 30 (2^30 ≈ 1.07 × 10^9 ms ≈ 12.4 days, far above
+     * any realistic maxDelay).
      */
     public function computeDelay(int $attempt): int
     {
@@ -52,7 +58,11 @@ final readonly class RetryConfig
             return $this->delay;
         }
 
-        $computed = (int)($this->delay * (2 ** ($attempt - 1)));
+        // Cap exponent to avoid overflow: 2^30 already dwarfs any realistic maxDelay,
+        // and attempts > 31 would silently wrap into negatives on 32-bit platforms.
+        $exponent = max(0, min($attempt - 1, 30));
+
+        $computed = (int)($this->delay * (2 ** $exponent));
 
         return min($computed, $this->maxDelay);
     }

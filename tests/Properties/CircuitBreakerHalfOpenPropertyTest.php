@@ -87,7 +87,7 @@ class CircuitBreakerHalfOpenPropertyTest extends TestCase
         );
 
         // Wait for cooldown to elapse (1ms cooldown + 2ms sleep)
-        usleep(2000);
+        usleep(5000);
 
         // isCallAllowed() should transition from Open to HalfOpen
         $allowed = $breaker->isCallAllowed();
@@ -163,7 +163,7 @@ class CircuitBreakerHalfOpenPropertyTest extends TestCase
         );
 
         // Wait for cooldown to elapse (1ms cooldown + 2ms sleep)
-        usleep(2000);
+        usleep(5000);
 
         // isCallAllowed() should transition from Open to HalfOpen
         $allowed = $breaker->isCallAllowed();

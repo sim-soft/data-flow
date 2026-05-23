@@ -1,8 +1,3 @@
----
-title: Circuit Breaker
-parent: Resilience
-nav_order: 2
----
 
 # Circuit Breaker
 

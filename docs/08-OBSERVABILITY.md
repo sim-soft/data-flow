@@ -1,8 +1,3 @@
----
-title: Logging & Metrics
-parent: Observability
-nav_order: 1
----
 
 # Observability
 

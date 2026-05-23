@@ -1,8 +1,3 @@
----
-title: Reusable DataFlow
-parent: Getting Started
-nav_order: 4
----
 
 # Controllable Data Flow
 

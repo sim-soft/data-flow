@@ -1,14 +1,9 @@
----
-title: Spreadsheet
-parent: Features
-nav_order: 3
----
 
 # Spreadsheet (PhpSpreadsheet)
 
-Read and write Excel files (.xlsx, .xls) using PhpSpreadsheet. For
-high-performance streaming of large files,
-see [SpoutExtractor/SpoutLoader](02-USEFUL_PROCESSORS.md).
+Read and write Excel files using PhpSpreadsheet (via the vendored
+`Simsoft\Spreadsheet` wrapper for writing). For high-performance streaming of
+large files, see [SpoutExtractor/SpoutLoader](02-USEFUL_PROCESSORS.md).
 
 ## Reading Spreadsheets
 
@@ -104,10 +99,11 @@ Disable the automatic timestamp suffix to overwrite the same file.
 
 ## SpreadsheetExtractor vs SpoutExtractor
 
-| Feature         | SpreadsheetExtractor                   | SpoutExtractor           |
-|-----------------|----------------------------------------|--------------------------|
-| Library         | PhpSpreadsheet                         | Box\Spout                |
-| Memory          | Loads entire file                      | Streams row-by-row       |
-| Best for        | Small/medium files, complex formatting | Large files (100K+ rows) |
-| Formats         | xlsx, xls, csv, ods                    | xlsx, csv, ods           |
-| Cell formatting | Full access                            | Read-only values         |
+| Feature         | SpreadsheetExtractor                   | SpoutExtractor              |
+|-----------------|----------------------------------------|-----------------------------|
+| Library         | PhpSpreadsheet                         | OpenSpout                   |
+| Memory          | Loads entire file                      | Streams row-by-row          |
+| Best for        | Small/medium files, complex formatting | Large files (100K+ rows)    |
+| Read formats    | xlsx, xls, csv, ods                    | xlsx, csv, ods              |
+| Write formats   | xlsx, csv (via SpreadsheetLoader)      | xlsx, csv (via SpoutLoader) |
+| Cell formatting | Full access                            | Read-only values            |

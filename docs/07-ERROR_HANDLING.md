@@ -1,8 +1,3 @@
----
-title: Error Handling
-parent: Resilience
-nav_order: 1
----
 
 # Error Handling
 
@@ -21,6 +16,35 @@ four error strategies:
 | `Skip`           | Discard the failing row, continue with next     |
 | `Retry`          | Re-attempt with backoff delay, then dead-letter |
 | `LogAndContinue` | Log the error, pass original row through        |
+
+## ⚠️ Caveat: Stateful Transformers
+
+When the error strategy is anything other than `Throw`, `StageRunner` invokes
+the stage **per-row** for error isolation: each row is wrapped in a single-row
+`ArrayIterator` and passed to the stage individually. This breaks transformers
+that buffer state across rows, such as
+[`Chunk`](../src/Transformers/Chunk.php), because each invocation only ever
+sees one row.
+
+If a stage relies on cross-row state, either:
+
+- Use `ErrorStrategy::Throw` (the default) for that stage, which preserves
+  full-stream semantics and feeds the entire iterator to the stage in one call.
+- Split the stateful step into a separate pipeline so the per-row error
+  handling does not run against it.
+
+```php
+// ✅ Stateful: keep Throw so the full iterator reaches the transformer.
+$pipeline->transform(
+    (new Chunk(100))->withErrorStrategy(ErrorStrategy::Throw)
+);
+
+// ❌ Stateful + Skip/Retry/LogAndContinue: each row is wrapped solo,
+// breaking the chunking buffer.
+$pipeline->transform(
+    (new Chunk(100))->withErrorStrategy(ErrorStrategy::Skip)
+);
+```
 
 ## Basic Usage
 

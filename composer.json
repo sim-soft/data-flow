@@ -27,10 +27,12 @@
     "openspout/openspout": "^4.0"
   },
   "license": "MIT",
+  "suggest": {
+    "simsoft/fliq": "Required for ActiveQueryExtractor — high-performance Active Record / ORM"
+  },
   "autoload": {
     "psr-4": {
       "Simsoft\\DataFlow\\": "src",
-      "Simsoft\\DB\\MySQL\\": "simsoft/db-mysql/src/",
       "Simsoft\\Spreadsheet\\": "simsoft/spreadsheet/src/"
     }
   },
@@ -47,6 +49,7 @@
     ]
   },
   "require-dev": {
+    "simsoft/fliq": "^1.0",
     "phpunit/phpunit": "^11",
     "phpmd/phpmd": "^2.15",
     "phpstan/phpstan": "^2.1"

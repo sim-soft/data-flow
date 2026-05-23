@@ -143,31 +143,35 @@ Extract directory path only.
 
 ## ActiveQueryExtractor
 
-Extract data from ActiveQuery.
+Extract data from database
+using [simsoft/fliq](https://github.com/sim-soft/fliq) — a high-performance
+Active Record / ORM for PHP. Both DataFlow and FLIQ are part of the Simsoft
+framework.
+
+```bash
+composer require simsoft/fliq
+```
 
 ```php
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Extractors\ActiveQueryExtractor;
-use Simsoft\DB\MySQL\Connection;
-use Simsoft\DB\MySQL\Model;
+use Simsoft\DB\Connection;
+use Simsoft\DB\Model;
 
-Connection::configure([
-    'default' => [
-        'driver' => 'mysql',
-        'host' => env('DB_HOST'),
-        'username' => env('DB_USERNAME'),
-        'password' => env('DB_PASSWORD'),
-        'port' => env('DB_PORT'),
-        'database' => env('DB_DATABASE'),
-        'charset' => 'utf8mb4',
-    ]
+Connection::add('mysql', [
+    'driver' => 'mysql',
+    'host' => env('DB_HOST'),
+    'username' => env('DB_USERNAME'),
+    'password' => env('DB_PASSWORD'),
+    'port' => env('DB_PORT'),
+    'database' => env('DB_DATABASE'),
+    'charset' => 'utf8mb4',
 ]);
 
 class User extends Model
 {
-    protected string $connection = 'default';
     protected string $table = 'user';
-    protected string|array $primaryKey = 'id';
+    protected array $fillable = ['name', 'email', 'status'];
 }
 
 $query = User::find()->where('status', 'active')->where('age', '>', 20);
@@ -183,6 +187,10 @@ $query = User::find()->where('status', 'active')->where('age', '>', 20);
 // John Doe is over 20 years old
 // Jane Doe is over 20 years old
 ```
+
+> **Using a different ORM?** Create your own extractor by extending
+`Simsoft\DataFlow\Extractor`.
+> See [Custom Processors](03-CUSTOMIZED_PROCESSOR.md) for how to build one.
 
 ## SpoutLoader
 

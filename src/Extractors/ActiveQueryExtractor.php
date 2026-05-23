@@ -6,7 +6,7 @@ namespace Simsoft\DataFlow\Extractors;
 
 use Simsoft\DataFlow\Extractor;
 use Iterator;
-use Simsoft\DB\MySQL\Builder\ActiveQuery;
+use Simsoft\DB\Builder\ActiveQuery;
 
 /**
  * ActiveQueryExtractor class

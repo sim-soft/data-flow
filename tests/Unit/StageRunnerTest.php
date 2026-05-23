@@ -271,7 +271,7 @@ class StageRunnerTest extends TestCase
         $this->assertSame(CircuitState::Open, $states['cb-recovery-stage']);
 
         // Wait for cooldown to elapse
-        usleep(2000); // 2ms
+        usleep(5000); // 5ms
 
         // Second pass: circuit should transition to HalfOpen and allow probe call
         $input2 = new ArrayIterator([

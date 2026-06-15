@@ -1,5 +1,9 @@
 # Simsoft DataFlow
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PHP](https://img.shields.io/badge/PHP-%3E%3D8.3-8892BF.svg)](https://php.net)
+[![Docs](https://img.shields.io/badge/Docs-sim--soft.github.io-blue.svg)](https://sim-soft.github.io/data-flow/)
+
 > A lightweight, composable ETL pipeline library for PHP 8.3+
 
 **DataFlow** helps you move data from one place to another — read from a

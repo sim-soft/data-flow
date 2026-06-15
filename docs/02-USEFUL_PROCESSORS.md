@@ -69,6 +69,10 @@ $dataSource = fn() => yield from range(1, 10);
 Extract data from spreadsheet file. Powered
 by [OpenSpout](https://github.com/openspout/openspout).
 
+```bash
+composer require openspout/openspout
+```
+
 ```php
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Extractors\SpoutExtractor;
@@ -84,6 +88,10 @@ use Simsoft\DataFlow\Extractors\SpoutExtractor;
 ## FileFinderExtractor
 
 Extract file and directory paths from a given directory.
+
+```bash
+composer require league/flysystem
+```
 
 ```php
 use League\Flysystem\DirectoryAttributes;
@@ -197,6 +205,10 @@ $query = User::find()->where('status', 'active')->where('age', '>', 20);
 Load data into spreadsheet file using **mapping** method. Powered
 by [OpenSpout](https://github.com/openspout/openspout). Supports dry-run mode —
 when enabled, rows are processed but no file is written.
+
+```bash
+composer require openspout/openspout
+```
 
 ```php
 use Simsoft\DataFlow\DataFlow;

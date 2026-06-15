@@ -5,6 +5,10 @@ Read and write Excel files using PhpSpreadsheet (via the vendored
 `Simsoft\Spreadsheet` wrapper for writing). For high-performance streaming of
 large files, see [SpoutExtractor/SpoutLoader](02-USEFUL_PROCESSORS.md).
 
+```bash
+composer require phpoffice/phpspreadsheet
+```
+
 ## Reading Spreadsheets
 
 ```php

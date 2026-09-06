@@ -1,5 +1,6 @@
 # Simsoft DataFlow
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/simsoft/data-flow.svg)](https://packagist.org/packages/simsoft/data-flow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.3-8892BF.svg)](https://php.net)
 [![Docs](https://img.shields.io/badge/Docs-sim--soft.github.io-blue.svg)](https://sim-soft.github.io/data-flow/)

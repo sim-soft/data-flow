@@ -2,9 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.0.0] - 2026-09-06
+
+Major version because row keys are now preserved between stages. Pipelines that
+relied on the old re-indexed keys will behave differently — most visibly,
+`SpoutLoader` now writes multiple worksheets where it previously wrote one. See
+[UPGRADING.md](UPGRADING.md).
 
 ### Fixed
 

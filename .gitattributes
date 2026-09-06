@@ -88,6 +88,8 @@
 .kiro/         export-ignore
 docs/          export-ignore
 tests/         export-ignore
+scripts/       export-ignore
+RELEASING.md   export-ignore
 phpunit.xml    export-ignore
 phpstan.neon   export-ignore
 phpmd.xml      export-ignore

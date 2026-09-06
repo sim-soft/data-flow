@@ -20,6 +20,12 @@
             <directory>tests/Properties</directory>
         </testsuite>
     </testsuites>
+    <!--
+        Coverage outputs are requested on the command line by `composer coverage`
+        rather than configured here: a <coverage> report block makes PHPUnit warn
+        when no driver is installed, and failOnWarning above would turn every
+        ordinary `composer test` run red. See RELEASING.md.
+    -->
     <source>
         <include>
             <directory>src</directory>

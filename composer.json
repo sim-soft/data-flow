@@ -45,11 +45,23 @@
     }
   },
   "scripts": {
-    "test": "phpunit --display-deprecations --display-warnings tests",
+    "test": "phpunit -d memory_limit=512M --display-deprecations --display-warnings tests",
+    "coverage": [
+      "@putenv XDEBUG_MODE=coverage",
+      "phpunit -d memory_limit=512M --coverage-clover=coverage.xml --coverage-html=coverage --coverage-text tests"
+    ],
+    "coverage-check": [
+      "@coverage",
+      "php scripts/coverage-check.php"
+    ],
     "qc": [
       "phpstan analyse --memory-limit=512M",
       "phpmd src text phpmd.xml"
     ]
+  },
+  "scripts-descriptions": {
+    "coverage": "Generate coverage reports (requires the pcov or xdebug extension)",
+    "coverage-check": "Generate coverage and fail if it drops below the floor"
   },
   "require-dev": {
     "simsoft/fliq": "^1.0",

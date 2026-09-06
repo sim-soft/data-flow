@@ -391,6 +391,18 @@ to inspect one when it misbehaves.
 13. [Metrics Exporter](docs/13-METRICS_EXPORTER.md)
 14. [Spreadsheet (PhpSpreadsheet)](docs/14-SPREADSHEET.md)
 
+## Releasing
+
+Maintainers: see
+**[RELEASING.md](https://github.com/sim-soft/data-flow/blob/master/RELEASING.md)**
+for the release checklist. (It is excluded from the installed package, hence the
+absolute link.)
+After publishing, verify the release the way a user installs it:
+
+```shell
+php scripts/verify-release.php <version>
+```
+
 ## License
 
 The Simsoft DataFlow is licensed under the MIT License. See

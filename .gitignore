@@ -88,3 +88,9 @@ composer.phar
 .kiro/history/
 /.vscode/settings.json
 /index.php
+
+# Coverage artifacts
+/coverage/
+/coverage.xml
+/clover.xml
+/.phpunit.cache/

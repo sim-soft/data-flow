@@ -12,6 +12,8 @@ the window between publishing and checking short.
 
 - [ ] `composer test` — full suite green
 - [ ] `composer qc` — PHPStan level 8 and PHPMD clean
+- [ ] `composer coverage-check` — coverage has not dropped below the floor
+      (needs the pcov or xdebug extension; CI runs this on every PR)
 - [ ] `composer validate --strict` — manifest is valid
 - [ ] CI is green **on the merge commit you intend to tag**, not just on the
       feature branch. A branch can pass and the merge still break.
@@ -67,6 +69,30 @@ Two bugs shipped in 3.0.0 and neither was reachable from the test suite or CI:
 The shared root cause is that the test suite runs against the working tree with
 dev dependencies pinned. It cannot see resolution behaviour, packaging, or
 anything that depends on how the package is consumed. This step can.
+
+## Coverage
+
+```bash
+composer coverage        # reports only
+composer coverage-check  # reports, then enforce the floor
+```
+
+Needs pcov or xdebug, plus the `zip` and `gd` extensions — without them the
+spreadsheet tests error out and coverage reads ~2.5 points low, which looks like
+a regression but is not one. CI installs all of these. Writes `coverage.xml`
+(clover) and `coverage/` (HTML), both gitignored; CI uploads the HTML as an
+artifact.
+
+The floor in `scripts/coverage-check.php` is a **ratchet, not a target**: it was
+set at the coverage that existed when it was introduced, so it catches
+regressions without demanding tests for untouched code. Raise it when coverage
+genuinely improves. Do not lower it to make a build pass — if a PR drops
+coverage, either add tests or say in the PR why the drop is acceptable.
+
+Note that coverage measures which lines *ran*, not whether they were meaningfully
+asserted on. The dry-run bug in 3.0.0 sat in a method the suite executed; what
+was missing was a test asserting the file was absent. Treat a high number as
+weak evidence, and the consumer install check below as the stronger one.
 
 ## If the check fails
 

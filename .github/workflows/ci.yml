@@ -77,6 +77,43 @@ jobs:
       - name: Run test suite
         run: composer test
 
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, zip, dom, xmlwriter, simplexml, fileinfo, gd
+          coverage: pcov
+          ini-values: memory_limit=512M
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v3
+        with:
+          composer-options: --prefer-dist
+
+      - name: Measure coverage
+        run: composer coverage
+
+      # Fails if line coverage drops below the floor in scripts/coverage-check.php.
+      # The floor is a ratchet set at the coverage that existed when it was
+      # added — raise it as coverage improves, do not lower it to go green.
+      - name: Enforce coverage floor
+        run: php scripts/coverage-check.php
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
   quality:
     name: Static analysis
     runs-on: ubuntu-latest

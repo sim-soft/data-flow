@@ -85,18 +85,67 @@ final class PipelineExecutor
 
         /** @var StageMetrics[] $stageMetrics */
         $stageMetrics = [];
-        $totalRowsProcessed = 0;
 
-        // Build the stage pipeline: each stage receives the output of the previous
+        $totalRowsProcessed = $this->runStages(
+            $stages,
+            $stageMetrics,
+            $elapsedStartNs,
+            $pipelineId,
+            $skipToRowIndex,
+        );
+
+        // Delete checkpoint on successful completion
+        if ($this->checkpointManager !== null) {
+            $this->checkpointManager->delete();
+        }
+
+        return $this->buildResult($startTime, $elapsedStartNs, $totalRowsProcessed, $stageMetrics);
+    }
+
+    /**
+     * Chain the stages together and consume the pipeline.
+     *
+     * Each stage receives the previous stage's output. Intermediate stages are
+     * wrapped so their metrics are collected lazily as rows flow through; the
+     * last stage is consumed here, which is what actually drives the pipeline.
+     *
+     * @param Processor[] $stages The ordered list of pipeline stages.
+     * @param StageMetrics[] &$stageMetrics Reference to the stage metrics array.
+     * @param int|float $elapsedStartNs Pipeline start time in nanoseconds.
+     * @param string $pipelineId The pipeline ID for checkpointing.
+     * @param int $skipToRowIndex Row index to resume from (-1 means no skipping).
+     *
+     * @return int The total number of rows processed.
+     */
+    private function runStages(
+        array     $stages,
+        array     &$stageMetrics,
+        int|float $elapsedStartNs,
+        string    $pipelineId,
+        int       $skipToRowIndex,
+    ): int
+    {
+        $totalRowsProcessed = 0;
         $currentIterator = null;
+        $lastIndex = count($stages) - 1;
+        $upstreamSkipApplied = false;
 
         foreach ($stages as $index => $stage) {
             $stageStartNs = hrtime(true);
+            $isLastStage = $index === $lastIndex;
+
+            // Checkpoint resume: drop already-processed rows *before* they reach
+            // the final stage, so the loader's side effects are not repeated.
+            // Upstream stages still re-run — only the load is skipped.
+            if ($isLastStage && $skipToRowIndex > 0 && $currentIterator !== null) {
+                $currentIterator = $this->skipProcessedRows($currentIterator, $skipToRowIndex);
+                $upstreamSkipApplied = true;
+            }
 
             // Determine how to invoke the stage based on error strategy
             $stageOutput = $this->invokeStage($stage, $currentIterator);
 
-            if ($index < count($stages) - 1) {
+            if (!$isLastStage) {
                 // Intermediate stage: wrap output to collect metrics lazily
                 $currentIterator = $this->createMetricsCollectingIterator(
                     $stageOutput,
@@ -114,7 +163,8 @@ final class PipelineExecutor
                 $elapsedStartNs,
                 $stage->getName(),
                 $pipelineId,
-                $skipToRowIndex,
+                $upstreamSkipApplied ? -1 : $skipToRowIndex,
+                $upstreamSkipApplied ? $skipToRowIndex : 0,
             );
 
             $stageDurationMs = (hrtime(true) - $stageStartNs) / 1_000_000;
@@ -125,25 +175,10 @@ final class PipelineExecutor
                 durationMs: $stageDurationMs,
             );
 
-            // Record stage duration metric
             $this->metricsExporter->recordStageDuration($stage->getName(), $stageDurationMs);
         }
 
-        // Record stage durations for intermediate stages (already collected in stageMetrics)
-        // Note: intermediate stage durations are recorded when their metrics-collecting iterators complete
-        // The last stage duration is recorded above
-
-        // Handle empty pipeline (no stages)
-        if (empty($stages)) {
-            $totalRowsProcessed = 0;
-        }
-
-        // Delete checkpoint on successful completion
-        if ($this->checkpointManager !== null) {
-            $this->checkpointManager->delete();
-        }
-
-        return $this->buildResult($startTime, $elapsedStartNs, $totalRowsProcessed, $stageMetrics);
+        return $totalRowsProcessed;
     }
 
     /**
@@ -287,7 +322,7 @@ final class PipelineExecutor
      * @param Processor $stage The stage to invoke.
      * @param Iterator $input The full input iterator.
      *
-     * @return Generator<int, mixed, mixed, void>
+     * @return Generator<int|string, mixed, mixed, void>
      */
     private function invokeDirectly(Processor $stage, Iterator $input): Generator
     {
@@ -297,9 +332,9 @@ final class PipelineExecutor
         $rowCount = 0;
         $output = $stage($input);
 
-        foreach ($output as $row) {
+        foreach ($output as $key => $row) {
             $rowCount++;
-            yield $row;
+            yield $key => $row;
         }
 
         $this->logger->info("Stage '{$stageName}' completed: {$rowCount} rows processed");
@@ -318,7 +353,7 @@ final class PipelineExecutor
      * @param int|float $stageStartNs The stage start time in nanoseconds.
      * @param StageMetrics[] &$stageMetrics Reference to the stage metrics array.
      *
-     * @return Generator<int, mixed, mixed, void>
+     * @return Generator<int|string, mixed, mixed, void>
      */
     private function createMetricsCollectingIterator(
         Generator $stageOutput,
@@ -330,10 +365,10 @@ final class PipelineExecutor
         $rowsExited = 0;
         $stageName = $stage->getName();
 
-        foreach ($stageOutput as $row) {
+        foreach ($stageOutput as $key => $row) {
             $rowsExited++;
             $this->metricsExporter->recordRowProcessed($stageName);
-            yield $row;
+            yield $key => $row;
         }
 
         $stageDurationMs = (hrtime(true) - $stageStartNs) / 1_000_000;
@@ -349,6 +384,37 @@ final class PipelineExecutor
     }
 
     /**
+     * Drop rows already processed by a previous run before they reach the final stage.
+     *
+     * Checkpoint resume exists to avoid repeating work after a crash. Discarding
+     * rows after the final stage has run would still re-execute every write, so
+     * the rows are filtered out on the way in instead.
+     *
+     * Note this only protects the final (load) stage. Upstream extract and
+     * transform stages are re-executed on resume, so transformers with external
+     * side effects are not covered by this guarantee.
+     *
+     * @param Iterator $input The input iterator for the final stage.
+     * @param int $skipToRowIndex Skip rows up to and including this 1-based index.
+     *
+     * @return Generator<int|string, mixed, mixed, void>
+     */
+    private function skipProcessedRows(Iterator $input, int $skipToRowIndex): Generator
+    {
+        $rowIndex = 0;
+
+        foreach ($input as $key => $row) {
+            $rowIndex++;
+
+            if ($rowIndex <= $skipToRowIndex) {
+                continue;
+            }
+
+            yield $key => $row;
+        }
+    }
+
+    /**
      * Consume the last stage output with checkpoint, metrics, and progress tracking.
      *
      * @param Generator $stageOutput The stage output generator.
@@ -357,6 +423,11 @@ final class PipelineExecutor
      * @param string $stageName The last stage name.
      * @param string $pipelineId The pipeline ID for checkpointing.
      * @param int $skipToRowIndex Row index to skip to (-1 means no skipping).
+     *                            Only used when the rows could not be dropped
+     *                            upstream (a pipeline with no stage before the last).
+     * @param int $rowIndexOffset Number of rows already dropped upstream by
+     *                            {@see self::skipProcessedRows()}. Keeps checkpoint
+     *                            row indices absolute across a resumed run.
      *
      * @return int The number of rows consumed.
      */
@@ -367,10 +438,11 @@ final class PipelineExecutor
         string    $stageName,
         string    $pipelineId,
         int       $skipToRowIndex,
+        int       $rowIndexOffset = 0,
     ): int
     {
         $rowsExited = 0;
-        $globalRowIndex = 0;
+        $globalRowIndex = $rowIndexOffset;
 
         while ($stageOutput->valid()) {
             $globalRowIndex++;

@@ -15,7 +15,7 @@ the following arguments.
 The closure is expected to **return the data or enum Signal**.
 
 ```php
-require "vendor/autoload.php";
+require 'vendor/autoload.php';
 
 use Closure;
 use Simsoft\DataFlow\DataFlow;
@@ -45,16 +45,19 @@ try {
 // Index: 1, Data: 4
 // Index: 2, Data: 6
 // Index: 3, Data: 8
-// Index: 4, Data: 10
 // Exception: Throw exception at 5
 ```
+
+The last row printed is `Data: 8`, from source value `4`. Source value `5` sits at
+index `4` and is the one that triggers `$data >= 5`, so it raises the exception
+instead of reaching the loader.
 
 ## Control Pipeline with Signal
 
 Using "Next" signal.
 
 ```php
-require "vendor/autoload.php";
+require 'vendor/autoload.php';
 
 use Closure;
 use Simsoft\DataFlow\DataFlow;
@@ -88,7 +91,7 @@ use Simsoft\DataFlow\Enums\Signal;
 Using "Stop" Signal
 
 ```php
-require "vendor/autoload.php";
+require 'vendor/autoload.php';
 
 use Closure;
 use Simsoft\DataFlow\DataFlow;

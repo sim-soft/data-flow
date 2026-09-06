@@ -35,12 +35,15 @@ use Simsoft\DataFlow\Metrics\LogMetricsExporter;
 $exporter = new LogMetricsExporter($psrLogger);
 ```
 
-| Event             | Log Level | Context Keys                                                  |
-|-------------------|-----------|---------------------------------------------------------------|
-| Row processed     | info      | `stage`, `event`                                              |
-| Row failed        | warning   | `stage`, `error`, `event`                                     |
-| Stage duration    | info      | `stage`, `duration_ms`, `event`                               |
-| Pipeline complete | info      | `total_duration_ms`, `processed_rows`, `failed_rows`, `event` |
+| Event             | Log Level | Context Keys                                                     |
+|-------------------|-----------|------------------------------------------------------------------|
+| Row processed     | info      | `stage`, `event`                                                 |
+| Row failed        | warning   | `stage`, `exception_class`, `error`, `trace`, `event`            |
+| Stage duration    | info      | `stage`, `duration_ms`, `event`                                  |
+| Pipeline complete | info      | `total_duration_ms`, `processed_rows`, `failed_rows`, `event`    |
+
+`error` holds the exception message; `exception_class` and `trace` hold the class
+name and stack trace of the exception that caused the failure.
 
 ### CallbackMetricsExporter
 
@@ -48,12 +51,15 @@ Hook into specific events with closures.
 
 ```php
 use Simsoft\DataFlow\Metrics\CallbackMetricsExporter;
+use Throwable;
 
 $exporter = new CallbackMetricsExporter(
     onRowProcessed: function (string $stageName) {
         StatsD::increment("pipeline.rows.processed", tags: ["stage:{$stageName}"]);
     },
-    onRowFailed: function (string $stageName, string $error) {
+    // $error is the exception itself, not a message string — call
+    // $error->getMessage() if you need the text.
+    onRowFailed: function (string $stageName, Throwable $error) {
         StatsD::increment("pipeline.rows.failed", tags: ["stage:{$stageName}"]);
     },
     onStageDuration: function (string $stageName, float $durationMs) {
@@ -85,6 +91,7 @@ Implement the `MetricsExporter` interface for custom integrations.
 
 ```php
 use Simsoft\DataFlow\Interfaces\MetricsExporter;
+use Throwable;
 
 class PrometheusExporter implements MetricsExporter
 {
@@ -93,7 +100,7 @@ class PrometheusExporter implements MetricsExporter
         // increment counter
     }
 
-    public function recordRowFailed(string $stageName, string $errorMessage): void
+    public function recordRowFailed(string $stageName, Throwable $error): void
     {
         // increment error counter with labels
     }

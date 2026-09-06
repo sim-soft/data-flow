@@ -9,6 +9,7 @@ use Iterator;
 use Simsoft\DataFlow\Enums\Signal;
 use Simsoft\DataFlow\Loader;
 use Simsoft\DataFlow\Traits\CallableDataFrame;
+use Simsoft\DataFlow\Traits\ResolvesOutputPath;
 use Simsoft\Spreadsheet\SpreadsheetIO;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Psr16Cache;
@@ -16,11 +17,13 @@ use Symfony\Component\Cache\Psr16Cache;
 /**
  * SpreadsheetLoader class.
  *
- * Export data to CSV/ XLSX file.
+ * Export data to CSV/ XLSX file. Supports dry-run mode — when enabled, rows are
+ * processed but no file is written.
  */
 class SpreadsheetLoader extends Loader
 {
     use CallableDataFrame;
+    use ResolvesOutputPath;
 
     /** @var string Default file extension. */
     protected string $extension = 'xlsx';
@@ -50,9 +53,7 @@ class SpreadsheetLoader extends Loader
         protected ?string $cacheDir = null,
     )
     {
-        if (str_contains($this->filePath, '.')) {
-            [$this->filePath, $this->extension] = explode('.', $this->filePath);
-        }
+        [$this->filePath, $this->extension] = $this->splitOutputPath($this->filePath, $this->extension);
     }
 
     /**
@@ -110,22 +111,26 @@ class SpreadsheetLoader extends Loader
         }
 
         return $this->call($dataFrame, function (mixed $data) {
+            // Rows are still collected in dry-run mode so the pipeline exercises
+            // the same code path; only the write to disk is suppressed.
+            $isDryRun = $this->isDryRun();
+
             if ($data instanceof Iterator) {
                 $count = 0;
                 foreach ($data as $row) {
                     $this->spreadsheet->addRow($row);
                     if (++$count >= 10) { // write to file every 10 rows. Avoid memory exhaustion.
-                        $this->spreadsheet->saveAs($this->filePath);
+                        $isDryRun || $this->spreadsheet->saveAs($this->filePath);
                         $count = 0;
                     }
                 }
 
-                if ($count) { // write the rest to file.
+                if ($count && !$isDryRun) { // write the rest to file.
                     $this->spreadsheet->saveAs($this->filePath);
                 }
             } elseif (is_array($data)) {
                 $this->spreadsheet->addRow($data);
-                $this->spreadsheet->saveAs($this->filePath);
+                $isDryRun || $this->spreadsheet->saveAs($this->filePath);
             }
 
             return Signal::Next;

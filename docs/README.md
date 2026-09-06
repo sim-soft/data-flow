@@ -1,5 +1,8 @@
 # Simsoft DataFlow
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/simsoft/data-flow.svg?label=Packagist)](https://packagist.org/packages/simsoft/data-flow)
+[![Tests](https://img.shields.io/github/actions/workflow/status/sim-soft/data-flow/ci.yml?branch=master&label=Tests)](https://github.com/sim-soft/data-flow/actions/workflows/ci.yml)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/sim-soft/data-flow/blob/main/LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.3-8892BF.svg)](https://php.net)
 
@@ -32,17 +35,32 @@ composer require simsoft/data-flow
 # Quick Start
 
 ```php
+require 'vendor/autoload.php';
+
 use Simsoft\DataFlow\DataFlow;
 
 (new DataFlow())
     ->from([1, 2, 3, 4, 5])
     ->transform(fn($n) => $n * 2)
     ->filter(fn($n) => $n > 4)
-    ->load(fn($n) => echo $n . PHP_EOL)
+    ->load(function ($n) {
+        echo $n . PHP_EOL;
+    })
     ->run();
 
-// Output: 6, 8, 10
+// Output:
+// 6
+// 8
+// 10
 ```
+
+> `echo` is a statement, not an expression, so it cannot go inside an arrow
+> function (`fn() => ...`). Use a full `function () { ... }` closure whenever the
+> body needs to `echo`, assign, or run more than one expression.
+
+New to ETL? [Quick Start](00-GETTING_STARTED.md) walks through the same ideas
+more slowly, with a realistic example and a way to inspect a pipeline that is not
+behaving.
 
 # Why This Library
 

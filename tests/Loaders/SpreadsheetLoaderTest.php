@@ -19,15 +19,13 @@ class SpreadsheetLoaderTest extends TestCase
     /** @var string[] Files to clean up after each test. */
     private array $tempFiles = [];
 
-    /** @var string Temp directory for output files (no dots in path). */
+    /** @var string Temp directory for output files. */
     private string $tempDir;
 
     protected function setUp(): void
     {
         parent::setUp();
-        // Use a path without dots in directory names to avoid SpreadsheetLoader's
-        // explode('.') path parsing splitting on directory dots.
-        $this->tempDir = 'C:\\temp\\dftest';
+        $this->tempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'dftest';
         if (!is_dir($this->tempDir)) {
             mkdir($this->tempDir, 0777, true);
         }
@@ -71,6 +69,60 @@ class SpreadsheetLoaderTest extends TestCase
 
         $this->assertSame('/tmp/output', $filePathProp->getValue($loader));
         $this->assertSame('xlsx', $extensionProp->getValue($loader));
+    }
+
+    #[Test]
+    public function constructorKeepsDotsInDirectoryNames(): void
+    {
+        // Splitting on the first dot truncated the directory and wrote the
+        // output to the wrong location.
+        $loader = new SpreadsheetLoader('/srv/v1.2/report.xlsx');
+
+        $reflection = new \ReflectionClass($loader);
+
+        $filePathProp = $reflection->getProperty('filePath');
+        $filePathProp->setAccessible(true);
+
+        $extensionProp = $reflection->getProperty('extension');
+        $extensionProp->setAccessible(true);
+
+        $this->assertSame('/srv/v1.2/report', $filePathProp->getValue($loader));
+        $this->assertSame('xlsx', $extensionProp->getValue($loader));
+    }
+
+    #[Test]
+    public function dryRunProcessesRowsWithoutWritingAFile(): void
+    {
+        $expectedFile = $this->tempDir . '/spreadsheet_loader_test_dryrun.xlsx';
+        $this->trackTempFile($expectedFile);
+
+        $loader = (new SpreadsheetLoader($expectedFile))->append();
+        $loader->setDryRun(true);
+
+        iterator_to_array($loader(new ArrayIterator([
+            ['id' => 1, 'value' => 'first'],
+            ['id' => 2, 'value' => 'second'],
+        ])));
+
+        $this->assertFileDoesNotExist($expectedFile);
+    }
+
+    #[Test]
+    public function writesTheFileWhenDryRunIsDisabled(): void
+    {
+        // Counterpart to the dry-run test: proves the assertion above is about
+        // dry-run being honoured, not about the loader silently failing.
+        $expectedFile = $this->tempDir . '/spreadsheet_loader_test_wetrun.xlsx';
+        $this->trackTempFile($expectedFile);
+
+        $loader = (new SpreadsheetLoader($expectedFile))->append();
+
+        iterator_to_array($loader(new ArrayIterator([
+            ['id' => 1, 'value' => 'first'],
+            ['id' => 2, 'value' => 'second'],
+        ])));
+
+        $this->assertFileExists($expectedFile);
     }
 
     #[Test]

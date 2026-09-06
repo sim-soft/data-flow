@@ -11,6 +11,7 @@ Create UserReminderFlow.
 namespace App\ETL;
 
 use App\Model\User;
+use DateTimeImmutable;
 use Simsoft\DataFlow\DataFlow;
 use Simsoft\DataFlow\Extractors\ActiveQueryExtractor;
 use Simsoft\DataFlow\Loaders\SpreadsheetLoader;
@@ -69,6 +70,8 @@ class UserReminderFlow extends DataFlow
 
 ```php
 use App\ETL\UserReminderFlow;
+use DateTimeImmutable;
+use Exception;
 use Throwable;
 
 try {

@@ -58,8 +58,8 @@ class ApiLoader extends Loader
 }
 ```
 
-The built-in `SpoutLoader` already respects dry-run mode — it skips file writes
-when `isDryRun()` is true.
+The built-in `SpoutLoader` and `SpreadsheetLoader` already respect dry-run mode —
+both skip file writes when `isDryRun()` is true.
 
 ## Use Cases
 

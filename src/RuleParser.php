@@ -76,12 +76,16 @@ final class RuleParser
      * @param string $name Rule name as it appears in pipe-delimited rule strings.
      * @param class-string<ValidationRule> $ruleClass Class implementing ValidationRule.
      * @param (Closure(?string): ValidationRule)|null $factory Optional factory closure.
+     *
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
      */
     public static function register(string $name, string $ruleClass, ?Closure $factory = null): void
     {
         $registry = self::registry();
 
         if ($factory === null) {
+            // The parameter is unused by design: parameterless rules still have to
+            // match the registry's Closure(?string): ValidationRule signature.
             $factory = static fn(?string $params): ValidationRule => new $ruleClass();
         }
 

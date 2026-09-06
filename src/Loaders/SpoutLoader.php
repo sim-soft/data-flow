@@ -25,8 +25,13 @@ class SpoutLoader extends Loader
 {
     use ResolvesOutputPath;
 
-    /** @var SpoutIO The spreadsheet object. */
-    protected SpoutIO $spreadsheet;
+    /**
+     * @var SpoutIO|null The spreadsheet object.
+     *
+     * Created lazily on first write so that a dry run leaves no file behind:
+     * opening a writer creates the file on disk immediately.
+     */
+    protected ?SpoutIO $spreadsheet = null;
 
     /** @var bool Auto detect headers. */
     protected bool $detectHeaders = true;
@@ -40,28 +45,46 @@ class SpoutLoader extends Loader
     /**
      * Constructor.
      *
+     * The output file is not created here — the writer is opened on first
+     * write, so constructing a loader has no filesystem side effects.
+     *
      * @param string $filepath
      * @param string $defaultSheetName
-     * @throws LoaderException
      */
     public function __construct(protected string $filepath, protected string $defaultSheetName = 'Sheet1')
     {
-        try {
-            [$this->filepath, $this->extension] = $this->splitOutputPath($this->filepath, $this->extension);
+        [$this->filepath, $this->extension] = $this->splitOutputPath($this->filepath, $this->extension);
 
-            if ($timestamp = date_create()) {
-                $this->filepath .= '_' . $timestamp->format('Ymd-His');
-            }
-
-            $this->filepath .= '.' . $this->extension;
-
-            $this->spreadsheet = SpoutIO::createFromFile($this->filepath);
-        } catch (IOException|UnsupportedTypeException $throwable) {
-            throw new LoaderException(
-                "Failed to create file for writing: {$this->filepath}",
-                previous: $throwable
-            );
+        if ($timestamp = date_create()) {
+            $this->filepath .= '_' . $timestamp->format('Ymd-His');
         }
+
+        $this->filepath .= '.' . $this->extension;
+    }
+
+    /**
+     * Get the spreadsheet, opening the writer on first use.
+     *
+     * Deferred so that a dry run never touches the filesystem — OpenSpout
+     * creates the output file as soon as the writer is opened.
+     *
+     * @return SpoutIO
+     * @throws LoaderException
+     */
+    protected function spreadsheet(): SpoutIO
+    {
+        if ($this->spreadsheet === null) {
+            try {
+                $this->spreadsheet = SpoutIO::createFromFile($this->filepath);
+            } catch (IOException|UnsupportedTypeException $throwable) {
+                throw new LoaderException(
+                    "Failed to create file for writing: {$this->filepath}",
+                    previous: $throwable
+                );
+            }
+        }
+
+        return $this->spreadsheet;
     }
 
 
@@ -83,7 +106,7 @@ class SpoutLoader extends Loader
      */
     public function &getWriter(): ?WriterInterface
     {
-        return $this->spreadsheet->getWriter();
+        return $this->spreadsheet()->getWriter();
     }
 
     /**
@@ -103,12 +126,14 @@ class SpoutLoader extends Loader
         $sheetName ??= $this->defaultSheetName;
         $this->headers[$sheetName] = $headers;
 
-        $this->spreadsheet
-            ->sheet($sheetName)
-            ->addRow(
-                array_is_list($headers) ? $headers : array_values($headers),
-                bold: true
-            );
+        if (!$this->isDryRun()) {
+            $this->spreadsheet()
+                ->sheet($sheetName)
+                ->addRow(
+                    array_is_list($headers) ? $headers : array_values($headers),
+                    bold: true
+                );
+        }
 
         return $this;
     }
@@ -134,7 +159,7 @@ class SpoutLoader extends Loader
 
                 if (array_is_list($data)) {
                     if (!$this->isDryRun()) {
-                        $this->spreadsheet->sheet($sheetName)->addRow($data);
+                        $this->spreadsheet()->sheet($sheetName)->addRow($data);
                     }
                     yield $sheetName => $data;
                     continue;
@@ -143,12 +168,12 @@ class SpoutLoader extends Loader
                 $this->ensureHeaders($sheetName, $data, $headers);
 
                 if (!$this->isDryRun()) {
-                    $this->spreadsheet->sheet($sheetName)->addRow(array_merge($headers[$sheetName], $data));
+                    $this->spreadsheet()->sheet($sheetName)->addRow(array_merge($headers[$sheetName], $data));
                 }
                 yield $sheetName => $data;
             }
 
-            if (!$this->isDryRun()) {
+            if (!$this->isDryRun() && $this->spreadsheet !== null) {
                 $this->getWriter()?->close();
             }
         }

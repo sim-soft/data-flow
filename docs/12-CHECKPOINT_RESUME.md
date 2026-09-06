@@ -34,7 +34,25 @@ $result = (new DataFlow())
 ```
 
 When `resume()` is called, the pipeline reads the checkpoint file and skips rows
-up to the last saved position.
+up to the last saved position, so the loader never sees them a second time.
+
+### What resume does and does not skip
+
+Skipping happens just before the **final** stage. Extract and transform stages
+re-run from the beginning on every resume — only the load is skipped. In the
+example above, `processRow()` runs for all million rows while `saveRow()` runs
+only for the rows after the checkpoint.
+
+This matters in two ways:
+
+- **Transforms must be side-effect free.** If `processRow()` writes to a database
+  or calls an API, those calls repeat on resume. Keep writes in the load stage.
+- **Delivery is at-least-once, not exactly-once.** The checkpoint records the
+  last *interval* boundary, not the last row. With `interval: 1000` and a crash
+  at row 5,432, the checkpoint holds 5,000, so rows 5,001–5,432 are loaded twice.
+  Use a smaller interval to narrow the window (at the cost of more file writes),
+  and make the load idempotent — an upsert rather than an insert — if duplicates
+  are unacceptable.
 
 ## How It Works
 
@@ -51,12 +69,18 @@ up to the last saved position.
 
 ```json
 {
+    "version": 1,
     "pipelineId": "a3f2b8c1d4e5...",
     "lastRowIndex": 5000,
     "timestamp": 1700000000,
     "stageName": "Simsoft\\DataFlow\\CallableProcessor"
 }
 ```
+
+`version` is the checkpoint format version and is required. A checkpoint file
+without it — or with a version this release does not recognise — is ignored, and
+the pipeline starts from the beginning rather than resuming from a format it
+cannot read.
 
 ## Parameters
 
@@ -93,5 +117,6 @@ echo "Processed: {$result->getProcessedRows()} rows\n";
 // Checkpoint file is deleted on success
 ```
 
-If the process crashes at row 50,000, restarting the same script will skip the
-first 50,000 rows and continue from row 50,001.
+If the process crashes at row 50,000, restarting the same script skips loading
+the first 50,000 rows and continues from row 50,001. The CSV is still read and
+`enrichRow()` still runs for those rows — only `insertToDatabase()` is skipped.

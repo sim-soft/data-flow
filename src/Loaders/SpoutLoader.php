@@ -15,6 +15,7 @@ use OpenSpout\Writer\Exception\WriterNotOpenedException;
 use OpenSpout\Writer\WriterInterface;
 use Simsoft\DataFlow\Exceptions\LoaderException;
 use Simsoft\DataFlow\Loader;
+use Simsoft\DataFlow\Traits\ResolvesOutputPath;
 use Simsoft\Spreadsheet\SpoutIO;
 
 /**
@@ -22,6 +23,8 @@ use Simsoft\Spreadsheet\SpoutIO;
  */
 class SpoutLoader extends Loader
 {
+    use ResolvesOutputPath;
+
     /** @var SpoutIO The spreadsheet object. */
     protected SpoutIO $spreadsheet;
 
@@ -44,9 +47,7 @@ class SpoutLoader extends Loader
     public function __construct(protected string $filepath, protected string $defaultSheetName = 'Sheet1')
     {
         try {
-            if (str_contains($this->filepath, '.')) {
-                [$this->filepath, $this->extension] = explode('.', $this->filepath);
-            }
+            [$this->filepath, $this->extension] = $this->splitOutputPath($this->filepath, $this->extension);
 
             if ($timestamp = date_create()) {
                 $this->filepath .= '_' . $timestamp->format('Ymd-His');

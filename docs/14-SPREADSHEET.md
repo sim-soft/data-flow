@@ -71,11 +71,19 @@ use Simsoft\DataFlow\Loaders\SpreadsheetLoader;
 
 ```php
 new SpreadsheetLoader(
-    filePath: 'output/report',   // base path (without extension)
+    filePath: 'output/report',   // base path, with or without extension
     docType: 'Xlsx',             // 'Xlsx' or 'Csv' (default: 'Xlsx')
     cacheDir: '/tmp/cache',      // optional cache directory for large files
 )
 ```
+
+An extension on `filePath` sets the output format and is re-applied after the
+timestamp, so `output/report.csv` becomes `output/report_20250517-143022.csv`.
+Without one, the loader falls back to `.xlsx`. Dots in directory names are left
+alone — `releases/v1.2/report.xlsx` writes where you would expect.
+
+`SpreadsheetLoader` honours [dry-run mode](09-DRY_RUN.md): with `->dryRun()`, rows
+flow through the pipeline but no file is written.
 
 ### Append Mode
 

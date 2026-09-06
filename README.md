@@ -244,11 +244,19 @@ the pipeline.
     ->run();
 
 // Output:
-// Key: int(0)
-// Value: array(3) { ["name"]=> "John", ["email"]=> "john@example.com", ["full_name"]=> "JOHN" }
+// Key: 0
+// Value: array (
+//   'name' => 'John',
+//   'email' => 'john@example.com',
+//   'full_name' => 'JOHN',
+// )
 //
-// Key: int(1)
-// Value: array(3) { ["name"]=> "Jane", ["email"]=> "jane@example.com", ["full_name"]=> "JANE" }
+// Key: 1
+// Value: array (
+//   'name' => 'Jane',
+//   'email' => 'jane@example.com',
+//   'full_name' => 'JANE',
+// )
 ```
 
 Insert `preview()` at any point to understand the data shape before writing the
@@ -358,6 +366,10 @@ $result = (new DataFlow())
     ->load(fn($row) => $row)
     ->run();
 ```
+
+New to ETL or to this library? Start with
+**[Quick Start](docs/00-GETTING_STARTED.md)** — install, first pipeline, and how
+to inspect one when it misbehaves.
 
 ## Advanced Usage
 

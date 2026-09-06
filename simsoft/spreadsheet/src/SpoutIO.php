@@ -18,7 +18,7 @@ use OpenSpout\Writer\Exception\InvalidSheetNameException;
 use OpenSpout\Writer\Exception\SheetNotFoundException;
 use OpenSpout\Writer\Exception\WriterNotOpenedException;
 use OpenSpout\Writer\WriterInterface;
-use OpenSpout\Writer\WriterMultiSheetsAbstract;
+use OpenSpout\Writer\AbstractWriterMultiSheets;
 use OpenSpout\Reader\Common\Creator\ReaderFactory;
 use OpenSpout\Writer\Common\Creator\WriterFactory;
 
@@ -163,12 +163,18 @@ class SpoutIO
             if ($this->isReader()) {
                 $this->activeSheet = &$sheet;
                 $this->headers = [];
-            } elseif ($this->writer instanceof WriterMultiSheetsAbstract) {
+            } elseif ($this->writer instanceof AbstractWriterMultiSheets) {
                 $this->writer->setCurrentSheet($this->activeSheet = $sheet);
             }
-        } elseif ($this->writer instanceof WriterMultiSheetsAbstract) {
-            $sheet = $this->writer->addNewSheetAndMakeItCurrent();
-            $sheet->setName($sheetNameOrIndex);
+        } elseif ($this->writer instanceof AbstractWriterMultiSheets) {
+            // A writer always starts with one empty default sheet. Rename it for
+            // the first named sheet instead of leaving it orphaned in the file.
+            $sheets = $this->writer->getSheets();
+            $sheet = count($sheets) === 1 && $this->activeSheet === null
+                ? $this->writer->getCurrentSheet()
+                : $this->writer->addNewSheetAndMakeItCurrent();
+
+            $sheet->setName((string)$sheetNameOrIndex);
             $this->activeSheet = $this->writer->getCurrentSheet();
         }
         return $this;
@@ -195,7 +201,7 @@ class SpoutIO
 
             throw new SheetNotFoundException("Sheet: '$sheetNameOrIndex' is not found!");
 
-        } elseif ($this->writer instanceof WriterMultiSheetsAbstract) {
+        } elseif ($this->writer instanceof AbstractWriterMultiSheets) {
             foreach ($this->writer->getSheets() as $sheet) {
                 if ($sheet->getIndex() === $sheetNameOrIndex || $sheet->getName() === $sheetNameOrIndex) {
                     return $returnSheet ? $sheet : true;

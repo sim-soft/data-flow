@@ -1,7 +1,9 @@
 
 # Processors
 
-The package come with some useful processors.
+The package comes with the following processors.
+
+**Extractors** — where data comes from:
 
 1. [IterableExtractor](#IterableExtractor): Basic method to generate data
    stream.
@@ -11,7 +13,17 @@ The package come with some useful processors.
    from a given directory.
 4. [ActiveQueryExtractor](#ActiveQueryExtractor): Extract data from database via
    ActiveQuery.
-5. [SpoutLoader](#SpoutLoader): Load data into spreadsheet file. (.xlsx,.csv)
+5. [SpreadsheetExtractor](14-SPREADSHEET.md): Extract data from spreadsheet file
+   via PhpSpreadsheet. (.xlsx, .xls, .csv, .ods)
+
+**Loaders** — where data goes:
+
+6. [SpoutLoader](#SpoutLoader): Load data into spreadsheet file. (.xlsx,.csv)
+7. [SpreadsheetLoader](14-SPREADSHEET.md): Write a spreadsheet file via
+   PhpSpreadsheet, with cell formatting. (.xlsx, .csv)
+
+Each processor beyond `IterableExtractor` needs an extra Composer package; the
+requirement is listed in that processor's own section below.
 
 ## IterableExtractor
 

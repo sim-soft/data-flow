@@ -65,7 +65,7 @@ final class StageRunner
      * @param DeadLetterCollection $deadLetters Collection for failed rows.
      * @param callable|null $onError Global error callback.
      *
-     * @return Generator<int, mixed, mixed, void>
+     * @return Generator<int|string, mixed, mixed, void>
      *
      * @throws Throwable When the throw strategy is active and a row fails.
      */
@@ -145,7 +145,7 @@ final class StageRunner
      * @param CircuitBreaker|null $circuitBreaker Circuit breaker for this stage.
      * @param MetricsExporter $metricsExporter Metrics exporter.
      *
-     * @return Generator<int, mixed, mixed, void>
+     * @return Generator<int|string, mixed, mixed, void>
      *
      * @throws Throwable When the throw strategy is active and a row fails.
      */
@@ -164,7 +164,7 @@ final class StageRunner
         MetricsExporter      $metricsExporter,
     ): Generator
     {
-        foreach ($input as $row) {
+        foreach ($input as $inputKey => $row) {
             $rowIndex++;
 
             // Circuit breaker check: skip row if circuit is Open
@@ -176,13 +176,13 @@ final class StageRunner
             }
 
             try {
-                $singleRowIterator = new ArrayIterator([$row]);
+                $singleRowIterator = $this->singleRowIterator($inputKey, $row);
                 $output = $stage($singleRowIterator);
 
-                foreach ($output as $outputRow) {
+                foreach ($output as $outputKey => $outputRow) {
                     $rowCount++;
                     $circuitBreaker?->recordSuccess();
-                    yield $outputRow;
+                    yield $outputKey => $outputRow;
                 }
             } catch (Throwable $exception) {
                 $this->logError($logger, $stageName, $exception, $rowIndex, $row);
@@ -195,6 +195,7 @@ final class StageRunner
                 if ($strategy === ErrorStrategy::Retry) {
                     $resolved = $this->handleRetry(
                         $stage,
+                        $inputKey,
                         $row,
                         $retryConfig,
                         $logger,
@@ -213,7 +214,7 @@ final class StageRunner
 
                     $rowCount++;
                     $circuitBreaker?->recordSuccess();
-                    yield $resolved;
+                    yield $resolved[0] => $resolved[1];
                     continue;
                 }
 
@@ -226,7 +227,7 @@ final class StageRunner
 
                 if ($strategy === ErrorStrategy::LogAndContinue) {
                     $rowCount++;
-                    yield $row;
+                    yield $inputKey => $row;
                 }
             }
         }
@@ -246,7 +247,7 @@ final class StageRunner
      * @param int                  &$rowIndex Row index reference.
      * @param CircuitBreaker|null $circuitBreaker Circuit breaker for this stage.
      *
-     * @return Generator<int, mixed, mixed, void>
+     * @return Generator<int|string, mixed, mixed, void>
      *
      * @throws Throwable When the throw strategy is active and a row fails.
      */
@@ -273,6 +274,7 @@ final class StageRunner
                 }
 
                 $row = $output->current();
+                $rowKey = $output->key();
             } catch (Throwable $exception) {
                 $rowIndex++;
 
@@ -337,7 +339,7 @@ final class StageRunner
 
             $rowCount++;
             $circuitBreaker?->recordSuccess();
-            yield $row;
+            yield $rowKey => $row;
 
             try {
                 $output->next();
@@ -348,6 +350,24 @@ final class StageRunner
     }
 
     /**
+     * Wrap a single row in an iterator, preserving its original key.
+     *
+     * Per-row invocation is how non-Throw error strategies isolate failures.
+     * The key must survive that wrapping, otherwise stages that dispatch on the
+     * key (such as {@see \Simsoft\DataFlow\Loaders\SpoutLoader}'s sheet names)
+     * would see every row renumbered from zero.
+     *
+     * @param int|string $key The row key.
+     * @param mixed $row The row data.
+     *
+     * @return ArrayIterator<int|string, mixed>
+     */
+    private function singleRowIterator(int|string $key, mixed $row): ArrayIterator
+    {
+        return new ArrayIterator([$key => $row]);
+    }
+
+    /**
      * Handle the retry strategy for a failing row.
      *
      * Attempts to re-invoke the stage up to maxAttempts times with exponential
@@ -355,6 +375,7 @@ final class StageRunner
      * records the failure and adds to dead-letter collection.
      *
      * @param Processor $stage The stage processor.
+     * @param int|string $rowKey The key of the failing row, preserved across retries.
      * @param mixed $row The failing row data.
      * @param RetryConfig|null $retryConfig Retry configuration.
      * @param LoggerInterface $logger PSR-3 logger instance.
@@ -364,10 +385,12 @@ final class StageRunner
      * @param int $rowIndex The current row index.
      * @param string $stageName The stage name.
      *
-     * @return mixed The successfully processed row, or null if all attempts failed.
+     * @return array{0: int|string, 1: mixed}|null The key/value pair produced by the
+     *                                             successful retry, or null if all attempts failed.
      */
     private function handleRetry(
         Processor            $stage,
+        int|string           $rowKey,
         mixed                $row,
         ?RetryConfig         $retryConfig,
         LoggerInterface      $logger,
@@ -376,7 +399,7 @@ final class StageRunner
         Throwable            $exception,
         int                  $rowIndex,
         string               $stageName,
-    ): mixed
+    ): ?array
     {
         $maxAttempts = $retryConfig !== null ? $retryConfig->maxAttempts : 3;
         $lastException = $exception;
@@ -391,11 +414,11 @@ final class StageRunner
             usleep($delayMs * 1000);
 
             try {
-                $singleRowIterator = new ArrayIterator([$row]);
+                $singleRowIterator = $this->singleRowIterator($rowKey, $row);
                 $retryOutput = $stage($singleRowIterator);
 
                 if ($retryOutput->valid()) {
-                    return $retryOutput->current();
+                    return [$retryOutput->key(), $retryOutput->current()];
                 }
 
                 break;

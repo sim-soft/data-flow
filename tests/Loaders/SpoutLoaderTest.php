@@ -18,14 +18,14 @@ use Simsoft\DataFlow\Tests\TestCase;
 #[CoversClass(SpoutLoader::class)]
 class SpoutLoaderTest extends TestCase
 {
-    /** @var string Temp directory without dots in path for SpoutLoader compatibility. */
+    /** @var string Temp directory for output files. */
     private string $tempDir;
 
     /** @var string[] Files to clean up after each test. */
     private array $tempFiles = [];
 
     /**
-     * Set up a temp directory without dots in the path.
+     * Set up a temp directory for output files.
      *
      * @return void
      */
@@ -33,8 +33,6 @@ class SpoutLoaderTest extends TestCase
     {
         parent::setUp();
 
-        // SpoutLoader uses explode('.', filepath) which breaks on paths with dots in directories.
-        // Use a dedicated temp directory without dots in the resolved path.
         $this->tempDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'tmp';
         if (!is_dir($this->tempDir)) {
             mkdir($this->tempDir, 0777, true);

@@ -53,16 +53,16 @@ try {
 
 // Output:
 // TITLE: NUMBER LIST
-// info: Number = 0
-// info: Number = 2
-// info: Number = 6
-// info: Number = 12
-// info: Number = 20
-// info: Number = 30
-// info: Number = 42
-// info: Number = 56
-// info: Number = 72
-// info: Number = 90
+// info: Number: 0
+// info: Number: 2
+// info: Number: 6
+// info: Number: 12
+// info: Number: 20
+// info: Number: 30
+// info: Number: 42
+// info: Number: 56
+// info: Number: 72
+// info: Number: 90
 ```
 
 ## Mixin

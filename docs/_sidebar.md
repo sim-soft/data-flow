@@ -2,6 +2,7 @@
     - [About](README.md)
 
 - **Getting Started**
+    - [Quick Start](00-GETTING_STARTED.md)
     - [Using Closure](01-USING_CLOSURE.md)
     - [Processors](02-USEFUL_PROCESSORS.md)
     - [Custom Processors](03-CUSTOMIZED_PROCESSOR.md)

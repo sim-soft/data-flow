@@ -23,12 +23,15 @@
     "psr/log": "^3.0"
   },
   "license": "MIT",
+  "conflict": {
+    "openspout/openspout": ">=5.0"
+  },
   "suggest": {
     "simsoft/fliq": "Required for ActiveQueryExtractor — high-performance Active Record / ORM",
     "phpoffice/phpspreadsheet": "Required for SpreadsheetExtractor and SpreadsheetLoader",
     "league/flysystem": "Required for FileFinderExtractor",
     "symfony/cache": "Optional caching support for SpreadsheetLoader",
-    "openspout/openspout": "Required for SpoutExtractor and SpoutLoader"
+    "openspout/openspout": "Required for SpoutExtractor and SpoutLoader (^4.0 — v5 removed the Creator factories this library uses)"
   },
   "autoload": {
     "psr-4": {

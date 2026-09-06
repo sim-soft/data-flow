@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.0.1] - 2026-09-07
+
+Both fixes below were found by installing 3.0.0 from Packagist as a consumer
+would. Neither was reachable from this repository's own test suite.
+
+### Fixed
+
+- `composer require simsoft/data-flow openspout/openspout` resolved OpenSpout 5,
+  which fatals immediately — v5 removed the `Creator` factories `SpoutIO` calls.
+  OpenSpout was listed only under `suggest`, which Composer does not enforce, so
+  nothing constrained the version. `openspout/openspout: >=5.0` is now declared
+  under `conflict`, so resolution picks a compatible v4 instead of failing at
+  runtime.
+- `SpoutLoader` created a 0-byte output file during a dry run. The writer was
+  opened in the constructor, and opening a writer creates the file on disk
+  immediately. It is now opened on first write, so a dry run leaves the
+  filesystem untouched — as `docs/09-DRY_RUN.md` already claimed it did.
+
+### Changed
+
+- `SpoutLoader` reports an unwritable or unsupported output path when the first
+  row is written rather than when the loader is constructed. Constructing a
+  loader now has no filesystem side effects. The exception type is unchanged
+  (`LoaderException`); only the point at which it surfaces has moved.
+
+### Added
+
+- A CI job that installs the lowest dependency versions allowed by
+  `composer.json`, so a lower bound that is too loose fails here rather than for
+  a consumer pinned to an older release.
+
 ## [3.0.0] - 2026-09-06
 
 Major version because row keys are now preserved between stages. Pipelines that

@@ -41,6 +41,42 @@ jobs:
       - name: Run test suite
         run: composer test
 
+  # The jobs above resolve to the newest release allowed by composer.json, so a
+  # constraint that is too loose at the bottom goes unnoticed: declaring
+  # "openspout/openspout: ^4.0" while calling an API added in 4.30 installs fine
+  # here and fails for anyone pinned lower. This job installs the oldest allowed
+  # version of every dependency so that gap surfaces in CI.
+  #
+  # Upper-bound breaks (OpenSpout 5 removing the Creator factories) are handled
+  # by the "conflict" block in composer.json, not here — require-dev pins ^4.0,
+  # so no resolution in this workflow can reach a v5.
+  lowest-deps:
+    name: Lowest allowed dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, zip, dom, xmlwriter, simplexml, fileinfo, gd
+          coverage: none
+          ini-values: memory_limit=512M
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: lowest
+          composer-options: --prefer-dist
+
+      - name: Report resolved versions
+        run: composer show --direct
+
+      - name: Run test suite
+        run: composer test
+
   quality:
     name: Static analysis
     runs-on: ubuntu-latest

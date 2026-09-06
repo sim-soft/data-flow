@@ -1,5 +1,32 @@
 # Upgrading Guide
 
+## From 3.0.0 to 3.0.1
+
+No API changes. One thing to check if you wrap loader construction in a
+`try`/`catch`.
+
+### `SpoutLoader` reports a bad output path later
+
+`SpoutLoader` used to open its writer in the constructor, so an unwritable or
+unsupported path threw `LoaderException` from `new SpoutLoader(...)`. The writer
+is now opened on the first write, so that same exception surfaces when the
+pipeline runs instead.
+
+The exception type has not changed — only where it is thrown. If you wrote:
+
+```php
+try {
+    $loader = new SpoutLoader($path);   // no longer throws
+} catch (LoaderException $e) {
+    // ...
+}
+```
+
+move the `catch` to cover `run()`, or let the pipeline's error handling take it.
+
+This was necessary to fix dry-run mode: opening a writer creates the file on
+disk, so a dry run was leaving a 0-byte file behind.
+
 ## From 2.0.x to 3.0.0
 
 No API changes. One behavioural fix is worth knowing about before you upgrade.

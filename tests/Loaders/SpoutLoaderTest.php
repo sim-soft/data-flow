@@ -108,13 +108,19 @@ class SpoutLoaderTest extends TestCase
     #[Test]
     public function invalidFilePathThrowsLoaderException(): void
     {
-        $this->expectException(LoaderException::class);
-
         // Use an unsupported extension to trigger UnsupportedTypeException → LoaderException
         $filepath = $this->tempDir . DIRECTORY_SEPARATOR . 'spout_invalid.unsupported';
         $this->registerTempFile('spout_invalid');
 
-        new SpoutLoader($filepath);
+        // The writer is opened lazily, so construction itself must not throw —
+        // the failure surfaces when the first row is written.
+        $loader = new SpoutLoader($filepath);
+
+        $this->expectException(LoaderException::class);
+
+        iterator_to_array($loader(new ArrayIterator([
+            'Sheet1' => ['name' => 'John Doe'],
+        ])));
     }
 
     #[Test]
@@ -198,5 +204,54 @@ class SpoutLoaderTest extends TestCase
         // Provide non-array data (a string)
         $dataFrame = new ArrayIterator(['Sheet1' => 'not an array']);
         iterator_to_array($loader($dataFrame));
+    }
+
+    #[Test]
+    public function dryRunLeavesNoFileBehind(): void
+    {
+        $this->registerTempFile('spout_dryrun');
+
+        $loader = new SpoutLoader($this->tempDir . DIRECTORY_SEPARATOR . 'spout_dryrun.xlsx');
+        $loader->setDryRun(true);
+
+        iterator_to_array($loader(new ArrayIterator([
+            'Sheet1' => ['name' => 'John Doe', 'age' => 20],
+        ])));
+
+        $this->assertEmpty(
+            glob($this->tempDir . DIRECTORY_SEPARATOR . 'spout_dryrun*.xlsx'),
+            'Dry run must not create an output file, not even an empty one'
+        );
+    }
+
+    #[Test]
+    public function constructingALoaderDoesNotTouchTheFilesystem(): void
+    {
+        $this->registerTempFile('spout_lazy');
+
+        new SpoutLoader($this->tempDir . DIRECTORY_SEPARATOR . 'spout_lazy.xlsx');
+
+        $this->assertEmpty(
+            glob($this->tempDir . DIRECTORY_SEPARATOR . 'spout_lazy*.xlsx'),
+            'The writer must not be opened until the first row is written'
+        );
+    }
+
+    #[Test]
+    public function writesTheFileWhenDryRunIsDisabled(): void
+    {
+        $this->registerTempFile('spout_wet');
+
+        $loader = new SpoutLoader($this->tempDir . DIRECTORY_SEPARATOR . 'spout_wet.xlsx');
+        $loader->setDryRun(false);
+
+        iterator_to_array($loader(new ArrayIterator([
+            'Sheet1' => ['name' => 'John Doe', 'age' => 20],
+        ])));
+
+        $this->assertNotEmpty(
+            glob($this->tempDir . DIRECTORY_SEPARATOR . 'spout_wet*.xlsx'),
+            'A non-dry run must still write its output file'
+        );
     }
 }

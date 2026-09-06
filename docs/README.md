@@ -3,7 +3,7 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/simsoft/data-flow.svg?label=Packagist)](https://packagist.org/packages/simsoft/data-flow)
 [![Tests](https://img.shields.io/github/actions/workflow/status/sim-soft/data-flow/ci.yml?branch=master&label=Tests)](https://github.com/sim-soft/data-flow/actions/workflows/ci.yml)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/sim-soft/data-flow/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/sim-soft/data-flow/blob/master/LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.3-8892BF.svg)](https://php.net)
 
 > A lightweight, composable ETL pipeline library for PHP 8.3+

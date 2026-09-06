@@ -1,6 +1,6 @@
 # Upgrading Guide
 
-## From 2.0.x to the next release
+## From 2.0.x to 3.0.0
 
 No API changes. One behavioural fix is worth knowing about before you upgrade.
 

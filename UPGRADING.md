@@ -1,5 +1,44 @@
 # Upgrading Guide
 
+## Unreleased
+
+### Dead-letter retention is capped at 1,000 entries
+
+Every failed row used to be retained in full. Each entry holds the row, the
+exception, and its stack trace — roughly 13 KB — so a run with many failures grew
+without bound: 25,000 failures cost around 275 MB. Retention is now capped by
+default.
+
+**Counts are unaffected.** `getFailedRows()` reports the true total, capped or
+not:
+
+```php
+$result->getFailedRows();                  // 25000 — unchanged
+$result->getDeadLetters()->totalCount();   // 25000
+$result->getDeadLetters()->count();        // 1000  — retained entries
+$result->getDeadLetters()->isTruncated();  // true
+```
+
+You are affected only if you **iterate** dead letters or `getFailures()` and
+expect an entry for every failure — for example writing them all to a file or a
+retry queue at the end of a run. Two options:
+
+```php
+// Keep the old behaviour, and the old memory profile with it.
+(new DataFlow())->withDeadLetterLimit(null)
+
+// Or drain failures as they happen and keep memory bounded.
+(new DataFlow())
+    ->withDeadLetterLimit(100)
+    ->onError(fn(Throwable $e, mixed $row) => $queue->push($row));
+```
+
+The second is preferable for large runs: the callback fires for every failure,
+so nothing is lost, and memory stays flat.
+
+If you only read counts, log a sample, or inspect failures interactively, no
+change is needed.
+
 ## From 3.0.0 to 3.0.1
 
 No API changes. One thing to check if you wrap loader construction in a

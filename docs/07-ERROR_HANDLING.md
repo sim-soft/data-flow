@@ -269,6 +269,68 @@ foreach ($deadLetters as $entry) {
 }
 ```
 
+### Retention Limit
+
+Each retained failure holds the row, the exception, and its stack trace — around
+13 KB. Retaining every failure would grow without bound and exhaust memory in
+exactly the long-running pipeline `Skip` exists to keep alive, so **retention is
+capped at 1,000 entries by default.**
+
+Failures beyond the cap are counted but not stored, which splits one number into
+two:
+
+```php
+$result = $flow->run();
+$deadLetters = $result->getDeadLetters();
+
+$result->getFailedRows();        // 25000 — every row that failed
+$deadLetters->totalCount();      // 25000 — the same figure
+$deadLetters->count();           // 1000  — what you can iterate
+$deadLetters->droppedCount();    // 24000 — discarded by the cap
+$deadLetters->isTruncated();     // true
+```
+
+**`getFailedRows()` is always exact.** The cap limits what you can inspect, never
+what gets reported, so counts and metrics stay trustworthy no matter how many
+rows fail.
+
+Retained entries are the *earliest* failures, not the most recent — the first
+failure in a run is usually the one that explains the rest.
+
+Adjust the limit with `withDeadLetterLimit()`:
+
+```php
+(new DataFlow())
+    ->withDeadLetterLimit(50)    // retain fewer
+    ->withDeadLetterLimit(null)  // retain everything (unbounded)
+    ->from($records)
+    // ...
+```
+
+Pass `null` only when failures are known to be few: it restores the unbounded
+behaviour, costing roughly 275 MB at 25,000 failures.
+
+Note that an `onError` callback does not replace retention — it fires *in
+addition to* the row being stored, so it does not by itself bound memory. To
+keep every failure without holding it in memory, set a small limit and write
+each one out from the callback:
+
+```php
+(new DataFlow())
+    ->withDeadLetterLimit(100)
+    ->onError(function (Throwable $e, mixed $row) use ($logFile): void {
+        file_put_contents(
+            $logFile,
+            json_encode(['row' => $row, 'error' => $e->getMessage()]) . "\n",
+            FILE_APPEND
+        );
+    })
+    // ...
+```
+
+If failures are the expected outcome for most rows, a `filter()` that rejects
+them is cheaper than a transformer that throws on them.
+
 ## Naming Stages
 
 Give processors meaningful names for better error reporting and logging.

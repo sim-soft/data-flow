@@ -81,6 +81,10 @@ final class PipelineResult
     /**
      * Get the total number of rows that failed processing.
      *
+     * Always the true total, even when the dead-letter limit discarded some of
+     * the entries behind it. Compare with {@see getFailures()} to detect
+     * truncation.
+     *
      * @return int
      */
     public function getFailedRows(): int
@@ -140,6 +144,11 @@ final class PipelineResult
 
     /**
      * Get the list of failure detail records.
+     *
+     * Built from the retained dead-letter entries, so this is capped by the
+     * dead-letter limit while {@see getFailedRows()} stays exact. When more rows
+     * failed than were retained, {@see DeadLetterCollection::isTruncated()}
+     * reports it.
      *
      * @return array<int, array{row: mixed, stageName: string, message: string, rowIndex: int}>
      */

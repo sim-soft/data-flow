@@ -21,11 +21,12 @@ declare(strict_types=1);
 
 $file = 'coverage.xml';
 
-// Measured at 90.20% when this was added. Note that a missing extension (zip,
-// gd) makes spreadsheet tests error out and drags the figure down by ~2.5
-// points, so a local run below this usually means a driver or extension is
-// missing rather than a real regression.
-$min = 90.0;
+// Measured at 90.20% when this was added; raised to 94.0 in 3.1.1 after the
+// StageRunner error paths gained tests (94.74% at the time). Note that a missing
+// extension (zip, gd) makes spreadsheet tests error out and drags the figure down
+// by ~2.5 points, so a local run below this usually means a driver or extension
+// is missing rather than a real regression.
+$min = 94.0;
 
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--min=')) {

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **An extractor that failed after yielding rows was reported as a clean run.**
+  A generator raises a mid-stream failure from `next()`, once, and is finished
+  afterwards — `valid()` then returns `false` and the exception is gone. The
+  extractor loop caught that failure while advancing and left it for "the next
+  loop iteration", which never saw it. A source that died halfway through — a
+  dropped database cursor, a truncated file read — produced a partial extract
+  with `failedRows` at 0 and nothing in the dead letters, and even
+  `ErrorStrategy::Throw` stayed silent. The failure is now carried to the loop's
+  error handling, so every strategy acts on it: `Throw` propagates,
+  `Skip`/`Retry`/`LogAndContinue` record it. Rows extracted before the failure
+  are still delivered.
+
+  Only sources that fail *after* yielding at least one row were affected; a
+  source that failed before its first row always reported correctly.
+
+### Added
+
+- Tests covering the `StageRunner` retry paths: the fallback to three attempts
+  when `ErrorStrategy::Retry` is selected without a `RetryConfig`, a retry that
+  stops throwing but yields no row, exhaustion reporting the last exception
+  rather than the first, and the extractor retry path — which the bug above had
+  made unreachable for mid-stream failures.
+
 ## [3.1.0] - 2026-09-07
 
 ### Added

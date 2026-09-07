@@ -7,6 +7,7 @@ use Generator;
 use Iterator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use Simsoft\DataFlow\CircuitBreakerConfig;
@@ -199,6 +200,303 @@ class StageRunnerTest extends TestCase
         $entry = $this->deadLetters->toArray()[0];
         $this->assertSame(['id' => 1], $entry->row);
         $this->assertSame('Persistent error', $entry->exception->getMessage());
+    }
+
+    #[Test]
+    public function retry_without_config_falls_back_to_three_attempts(): void
+    {
+        // retryConfig is nullable, so Retry can be selected without one. The
+        // fallback is 3 attempts at a fixed 100ms delay.
+        $stage = new class extends Transformer {
+            public int $calls = 0;
+
+            public function __construct()
+            {
+                $this->withName('default-retry-stage');
+            }
+
+            public function __invoke(?Iterator $dataFrame = null): Iterator
+            {
+                foreach ($dataFrame as $row) {
+                    $this->calls++;
+                    throw new RuntimeException('Always fails');
+                }
+
+                yield from [];
+            }
+        };
+
+        $input = new ArrayIterator([['id' => 1]]);
+        $output = $this->runner->run(
+            stage: $stage,
+            input: $input,
+            strategy: ErrorStrategy::Retry,
+            retryConfig: null,
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: null,
+        );
+
+        $results = iterator_to_array($output, false);
+
+        $this->assertCount(0, $results);
+        $this->assertSame(3, $stage->calls, 'One initial attempt plus two retries');
+        $this->assertSame(1, $this->deadLetters->count());
+    }
+
+    #[Test]
+    public function retry_that_stops_throwing_but_yields_nothing_goes_to_dead_letters(): void
+    {
+        // A retry can stop throwing yet still produce no row — a filtering stage
+        // that drops the row once the transient fault clears. There is nothing
+        // to yield downstream, so the row is treated as failed.
+        $stage = new class extends Transformer {
+            public int $calls = 0;
+
+            public function __construct()
+            {
+                $this->withName('empty-retry-stage');
+            }
+
+            public function __invoke(?Iterator $dataFrame = null): Iterator
+            {
+                $this->calls++;
+
+                foreach ($dataFrame as $row) {
+                    if ($this->calls === 1) {
+                        throw new RuntimeException('Transient error');
+                    }
+                    // Second attempt succeeds but filters the row out.
+                }
+
+                yield from [];
+            }
+        };
+
+        $retryConfig = new RetryConfig(maxAttempts: 3, delay: 0, exponential: false, maxDelay: 1);
+
+        $input = new ArrayIterator([['id' => 1]]);
+        $output = $this->runner->run(
+            stage: $stage,
+            input: $input,
+            strategy: ErrorStrategy::Retry,
+            retryConfig: $retryConfig,
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: null,
+        );
+
+        $results = iterator_to_array($output, false);
+
+        $this->assertCount(0, $results);
+
+        // The loop breaks rather than burning the third attempt: a stage that
+        // returned cleanly is not going to start throwing again.
+        $this->assertSame(2, $stage->calls);
+
+        $this->assertSame(1, $this->deadLetters->count());
+        $entry = $this->deadLetters->toArray()[0];
+        $this->assertSame(['id' => 1], $entry->row);
+        $this->assertSame('Transient error', $entry->exception->getMessage());
+    }
+
+    #[Test]
+    public function retry_exhaustion_reports_the_last_exception_not_the_first(): void
+    {
+        $stage = new class extends Transformer {
+            public int $calls = 0;
+
+            public function __construct()
+            {
+                $this->withName('varying-failure-stage');
+            }
+
+            public function __invoke(?Iterator $dataFrame = null): Iterator
+            {
+                foreach ($dataFrame as $row) {
+                    $this->calls++;
+                    throw new RuntimeException("attempt {$this->calls}");
+                }
+
+                yield from [];
+            }
+        };
+
+        $retryConfig = new RetryConfig(maxAttempts: 3, delay: 0, exponential: false, maxDelay: 1);
+
+        $captured = [];
+        $input = new ArrayIterator([['id' => 1]]);
+        $output = $this->runner->run(
+            stage: $stage,
+            input: $input,
+            strategy: ErrorStrategy::Retry,
+            retryConfig: $retryConfig,
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: function (\Throwable $e, mixed $row, string $stageName) use (&$captured): void {
+                $captured[] = $e->getMessage();
+            },
+        );
+
+        iterator_to_array($output, false);
+
+        $this->assertSame(3, $stage->calls);
+
+        // The most recent failure is the one worth reporting — the original may
+        // have been a symptom that has since changed.
+        $entry = $this->deadLetters->toArray()[0];
+        $this->assertSame('attempt 3', $entry->exception->getMessage());
+        $this->assertSame(['attempt 3'], $captured);
+    }
+
+    #[Test]
+    public function extractor_retry_records_a_failure_with_no_row_data(): void
+    {
+        $stage = $this->createFailingExtractor(yieldCount: 1, message: 'Source went away');
+
+        $captured = [];
+        $output = $this->runner->run(
+            stage: $stage,
+            input: null,
+            strategy: ErrorStrategy::Retry,
+            retryConfig: new RetryConfig(maxAttempts: 2, delay: 0, exponential: false, maxDelay: 1),
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: function (\Throwable $e, mixed $row, string $stageName) use (&$captured): void {
+                $captured[] = [$e->getMessage(), $row, $stageName];
+            },
+        );
+
+        $results = iterator_to_array($output, false);
+
+        // Rows produced before the source failed still reach the consumer.
+        $this->assertCount(1, $results);
+        $this->assertSame(['id' => 0], $results[0]);
+
+        $this->assertSame(1, $this->deadLetters->count());
+        $entry = $this->deadLetters->toArray()[0];
+
+        // An extractor failure happens while producing a row, so there is no
+        // row to record — unlike the transformer path, which keeps the input.
+        $this->assertNull($entry->row);
+        $this->assertSame('Source went away', $entry->exception->getMessage());
+        $this->assertSame('failing-extractor', $entry->stageName);
+        $this->assertSame(2, $entry->rowIndex);
+
+        $this->assertSame([['Source went away', null, 'failing-extractor']], $captured);
+    }
+
+    #[Test]
+    #[TestWith([ErrorStrategy::Skip])]
+    #[TestWith([ErrorStrategy::Retry])]
+    #[TestWith([ErrorStrategy::LogAndContinue])]
+    public function extractor_failing_after_yielding_rows_is_still_reported(ErrorStrategy $strategy): void
+    {
+        // Regression: a generator raises a mid-stream failure from next() and is
+        // finished afterwards, so the exception used to be caught while advancing
+        // and then lost. A source that died after yielding rows looked exactly
+        // like one that had simply ended — a truncated extract reported as a
+        // clean run.
+        $stage = $this->createFailingExtractor(yieldCount: 2, message: 'Connection lost mid-cursor');
+
+        $output = $this->runner->run(
+            stage: $stage,
+            input: null,
+            strategy: $strategy,
+            retryConfig: new RetryConfig(maxAttempts: 2, delay: 0, exponential: false, maxDelay: 1),
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: null,
+        );
+
+        $results = iterator_to_array($output, false);
+
+        // Rows extracted before the failure are still delivered.
+        $this->assertCount(2, $results);
+
+        $this->assertSame(1, $this->deadLetters->count());
+        $this->assertSame(
+            'Connection lost mid-cursor',
+            $this->deadLetters->toArray()[0]->exception->getMessage(),
+        );
+    }
+
+    #[Test]
+    public function throw_strategy_propagates_a_failure_raised_after_extracted_rows(): void
+    {
+        $stage = $this->createFailingExtractor(yieldCount: 2, message: 'Connection lost mid-cursor');
+
+        $output = $this->runner->run(
+            stage: $stage,
+            input: null,
+            strategy: ErrorStrategy::Throw,
+            retryConfig: null,
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: null,
+        );
+
+        $seen = [];
+
+        // Consumed one row at a time: Throw has to surface the failure to whoever
+        // is reading the stage, after the rows that preceded it.
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Connection lost mid-cursor');
+
+        try {
+            foreach ($output as $row) {
+                $seen[] = $row;
+            }
+        } finally {
+            $this->assertCount(2, $seen);
+        }
+    }
+
+    #[Test]
+    public function extractor_retry_without_config_falls_back_to_three_attempts(): void
+    {
+        // Same fallback as handleRetry(), on the extractor path.
+        $stage = $this->createFailingExtractor(yieldCount: 0, message: 'Cannot open source');
+
+        $output = $this->runner->run(
+            stage: $stage,
+            input: null,
+            strategy: ErrorStrategy::Retry,
+            retryConfig: null,
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: null,
+        );
+
+        $results = iterator_to_array($output, false);
+
+        $this->assertCount(0, $results);
+        $this->assertSame(1, $this->deadLetters->count());
+        $this->assertSame('Cannot open source', $this->deadLetters->toArray()[0]->exception->getMessage());
+    }
+
+    #[Test]
+    public function extractor_retry_opens_the_circuit_on_exhaustion(): void
+    {
+        $stage = $this->createFailingExtractor(yieldCount: 0, message: 'Source unavailable');
+        $stage->withCircuitBreaker(failureThreshold: 1, cooldownMs: 60000);
+
+        $output = $this->runner->run(
+            stage: $stage,
+            input: null,
+            strategy: ErrorStrategy::Retry,
+            retryConfig: new RetryConfig(maxAttempts: 2, delay: 0, exponential: false, maxDelay: 1),
+            logger: $this->logger,
+            deadLetters: $this->deadLetters,
+            onError: null,
+        );
+
+        iterator_to_array($output, false);
+
+        // The breaker is told about the failure only once the retries are spent,
+        // so a fault that a retry absorbs does not count against the threshold.
+        $states = $this->runner->getCircuitStates();
+        $this->assertSame(CircuitState::Open, $states['failing-extractor']);
     }
 
     #[Test]
@@ -438,6 +736,32 @@ class StageRunnerTest extends TestCase
                 foreach ($dataFrame as $row) {
                     yield $row;
                 }
+            }
+        };
+    }
+
+    /**
+     * An extractor that yields $yieldCount rows, then throws while producing the
+     * next one. The failure surfaces from the generator body rather than from
+     * the call itself, which is what the extractor error path has to handle.
+     */
+    private function createFailingExtractor(int $yieldCount, string $message): Extractor
+    {
+        return new class($yieldCount, $message) extends Extractor {
+            public function __construct(
+                private readonly int $yieldCount,
+                private readonly string $message,
+            ) {
+                $this->withName('failing-extractor');
+            }
+
+            public function __invoke(?Iterator $dataFrame = null): Iterator
+            {
+                for ($i = 0; $i < $this->yieldCount; $i++) {
+                    yield ['id' => $i];
+                }
+
+                throw new RuntimeException($this->message);
             }
         };
     }

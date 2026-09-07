@@ -266,9 +266,18 @@ final class StageRunner
     ): Generator
     {
         $output = $stage(null);
+        $pendingException = null;
 
         while (true) {
             try {
+                // Re-raise a failure caught while advancing the source, so the
+                // handling below sees it. See advanceExtractor().
+                if ($pendingException !== null) {
+                    $carried = $pendingException;
+                    $pendingException = null;
+                    throw $carried;
+                }
+
                 if (!$output->valid()) {
                     break;
                 }
@@ -298,12 +307,7 @@ final class StageRunner
                     );
 
                     $metricsExporter->recordRowFailed($stageName, $exception);
-
-                    try {
-                        $output->next();
-                    } catch (Throwable) {
-                        // Will be caught in next loop iteration
-                    }
+                    $pendingException = $this->advanceExtractor($output);
                     continue;
                 }
 
@@ -312,12 +316,7 @@ final class StageRunner
                 $this->recordFailure($deadLetters, null, $stageName, $rowIndex, $exception);
                 $this->invokeOnError($onError, $exception, null, $stageName);
                 $metricsExporter->recordRowFailed($stageName, $exception);
-
-                try {
-                    $output->next();
-                } catch (Throwable) {
-                    // Will be caught in next loop iteration
-                }
+                $pendingException = $this->advanceExtractor($output);
                 continue;
             }
 
@@ -328,12 +327,7 @@ final class StageRunner
                 $this->recordCircuitOpenSkip($deadLetters, $row, $stageName, $rowIndex);
                 $metricsExporter->recordRowFailed($stageName, new RuntimeException('circuit-open'));
                 $logger->debug("Row {$rowIndex} skipped in stage '{$stageName}': circuit-open");
-
-                try {
-                    $output->next();
-                } catch (Throwable) {
-                    // Will be caught in next loop iteration
-                }
+                $pendingException = $this->advanceExtractor($output);
                 continue;
             }
 
@@ -341,12 +335,33 @@ final class StageRunner
             $circuitBreaker?->recordSuccess();
             yield $rowKey => $row;
 
-            try {
-                $output->next();
-            } catch (Throwable) {
-                // Will be caught in next loop iteration via valid()/current()
-            }
+            $pendingException = $this->advanceExtractor($output);
         }
+    }
+
+    /**
+     * Advance an extractor's output, returning any failure rather than throwing.
+     *
+     * A generator reports a mid-stream failure from next(), once, and is finished
+     * afterwards: valid() then returns false and the exception is gone. Letting it
+     * escape here would abandon the loop's error handling, and swallowing it would
+     * lose the failure entirely — a source that died after yielding rows would look
+     * like one that simply ended. So it is handed back to the caller, which re-raises
+     * it on the next iteration where the configured ErrorStrategy can act on it.
+     *
+     * @param Iterator<int|string, mixed> $output The stage output being iterated.
+     *
+     * @return Throwable|null The failure raised while advancing, if any.
+     */
+    private function advanceExtractor(Iterator $output): ?Throwable
+    {
+        try {
+            $output->next();
+        } catch (Throwable $exception) {
+            return $exception;
+        }
+
+        return null;
     }
 
     /**

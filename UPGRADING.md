@@ -1,5 +1,42 @@
 # Upgrading Guide
 
+## From 3.1.0 to 3.1.1
+
+A bug fix, but it changes what your pipeline does when a source fails partway
+through — so it is worth a look before you upgrade.
+
+### Extractor failures after the first row are no longer silent
+
+A source that threw *after* yielding at least one row had its failure discarded.
+You got a partial extract that looked like a complete one: rows up to the failure,
+`getFailedRows()` at 0, nothing in the dead letters, and no exception even under
+`ErrorStrategy::Throw`. Sources that failed before their first row always
+reported correctly.
+
+The failure now reaches the error handling, so your configured strategy decides:
+
+```php
+// A source that yields 2 rows, then loses its connection.
+$result = (new DataFlow())->from($source)->load($loader)->run();
+
+// Before: returned normally, getFailedRows() === 0
+// Now:    throws — ErrorStrategy::Throw is the default
+```
+
+**What to check.** If a pipeline of yours was quietly truncating, it will now
+either throw or record a failure where it previously reported success. That is
+the point of the fix, but it can surface as a newly failing job. Either handle it:
+
+```php
+->from($source->withErrorStrategy(ErrorStrategy::Skip))
+```
+
+...which keeps the extracted rows and records the failure, or let it throw and
+fix the source. What you should not do is treat the new failure as a regression —
+the run was already incomplete, you just could not see it.
+
+Rows extracted before the failure are still delivered under every strategy.
+
 ## From 3.0.1 to 3.1.0
 
 ### Dead-letter retention is capped at 1,000 entries

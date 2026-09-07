@@ -1,6 +1,6 @@
 # Upgrading Guide
 
-## Unreleased
+## From 3.0.1 to 3.1.0
 
 ### Dead-letter retention is capped at 1,000 entries
 

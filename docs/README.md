@@ -71,7 +71,8 @@ behaving.
 - **Zero-overhead opt-in** — every resilience feature uses the null object
   pattern; disabled features cost nothing at runtime
 - **Generator-based streaming** — constant memory footprint regardless of
-  dataset size
+  dataset size, with dead-letter retention capped so bulk failures stay bounded
+  too ([details](07-ERROR_HANDLING.md#retention-limit))
 - **Per-stage error strategies** — configure Skip, Retry, Throw, or
   LogAndContinue independently on each stage
 - **Crash recovery** — checkpoint/resume enables long-running pipelines to

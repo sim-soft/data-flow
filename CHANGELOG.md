@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `DataFlow::withDeadLetterLimit()` configures how many failed rows are retained
+  for inspection. Pass `null` to restore the previous unbounded behaviour.
+- `DeadLetterCollection::totalCount()`, `droppedCount()`, `isTruncated()`, and
+  `getLimit()` distinguish how many rows failed from how many are retained.
+- `tests/Integration/MemoryScalingTest.php` asserts that peak memory stays flat
+  as datasets grow, so the "constant memory footprint" claim is now covered by
+  the suite rather than only by documentation.
+
+### Changed
+
+- **Dead-letter retention is capped at 1,000 entries by default.** Every failure
+  was previously retained in full — row, exception, and stack trace, roughly
+  13 KB each — so memory grew without bound and could exhaust a long run using
+  `ErrorStrategy::Skip`, which exists to survive bad rows. Capping keeps peak
+  memory flat: 100,000 failures now cost 12.7 MB instead of roughly 1.3 GB.
+
+  `getFailedRows()` remains exact — it now reports the true failure total rather
+  than the number of retained entries, so counts and metrics are unaffected.
+  `getDeadLetters()` and `getFailures()` return at most the limit; check
+  `isTruncated()` when you need to know whether you are seeing all of them.
+
 ## [3.0.1] - 2026-09-07
 
 Both fixes below were found by installing 3.0.0 from Packagist as a consumer

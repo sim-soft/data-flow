@@ -3,9 +3,11 @@
 namespace Simsoft\DataFlow\Tests;
 
 use Countable;
+use InvalidArgumentException;
 use IteratorAggregate;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Simsoft\DataFlow\DeadLetterCollection;
 use Simsoft\DataFlow\DeadLetterEntry;
 
@@ -80,6 +82,114 @@ class DeadLetterCollectionTest extends TestCase
         $this->assertIsArray($array);
         $this->assertCount(1, $array);
         $this->assertSame($entry, $array[0]);
+    }
+
+    #[Test]
+    public function retainsEntriesUpToTheLimitAndDiscardsTheRest(): void
+    {
+        $collection = new DeadLetterCollection(3);
+
+        for ($i = 0; $i < 10; $i++) {
+            $collection->add($this->createEntry('stage', $i));
+        }
+
+        $this->assertCount(3, $collection);
+        $this->assertSame(10, $collection->totalCount());
+        $this->assertSame(7, $collection->droppedCount());
+        $this->assertTrue($collection->isTruncated());
+    }
+
+    #[Test]
+    public function retainsTheEarliestEntriesWhenTruncating(): void
+    {
+        $collection = new DeadLetterCollection(2);
+
+        for ($i = 0; $i < 5; $i++) {
+            $collection->add($this->createEntry('stage', $i));
+        }
+
+        // The first failure usually explains the ones that follow, so the cap
+        // keeps the head of the sequence rather than the tail.
+        $indexes = array_map(
+            static fn(DeadLetterEntry $entry): int => $entry->rowIndex,
+            $collection->toArray()
+        );
+
+        $this->assertSame([0, 1], $indexes);
+    }
+
+    #[Test]
+    public function isNotTruncatedWhenEntriesFitWithinTheLimit(): void
+    {
+        $collection = new DeadLetterCollection(5);
+        $collection->add($this->createEntry('stage', 0));
+        $collection->add($this->createEntry('stage', 1));
+
+        $this->assertCount(2, $collection);
+        $this->assertSame(2, $collection->totalCount());
+        $this->assertSame(0, $collection->droppedCount());
+        $this->assertFalse($collection->isTruncated());
+    }
+
+    #[Test]
+    public function nullLimitRetainsEveryEntry(): void
+    {
+        $collection = new DeadLetterCollection(null);
+
+        for ($i = 0; $i < 50; $i++) {
+            $collection->add($this->createEntry('stage', $i));
+        }
+
+        $this->assertCount(50, $collection);
+        $this->assertSame(50, $collection->totalCount());
+        $this->assertFalse($collection->isTruncated());
+        $this->assertNull($collection->getLimit());
+    }
+
+    #[Test]
+    public function defaultsToTheDefaultLimit(): void
+    {
+        $collection = new DeadLetterCollection();
+
+        $this->assertSame(DeadLetterCollection::DEFAULT_LIMIT, $collection->getLimit());
+    }
+
+    #[Test]
+    public function iterationYieldsOnlyRetainedEntries(): void
+    {
+        $collection = new DeadLetterCollection(2);
+
+        for ($i = 0; $i < 6; $i++) {
+            $collection->add($this->createEntry('stage', $i));
+        }
+
+        $items = [];
+        foreach ($collection as $item) {
+            $items[] = $item;
+        }
+
+        $this->assertCount(2, $items);
+    }
+
+    #[Test]
+    public function emptyCollectionIsNotTruncated(): void
+    {
+        $collection = new DeadLetterCollection(10);
+
+        $this->assertSame(0, $collection->totalCount());
+        $this->assertSame(0, $collection->droppedCount());
+        $this->assertFalse($collection->isTruncated());
+    }
+
+    #[Test]
+    #[TestWith([0])]
+    #[TestWith([-1])]
+    #[TestWith([-100])]
+    public function rejectsANonPositiveLimit(int $limit): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new DeadLetterCollection($limit);
     }
 
     private function createEntry(string $stageName, int $rowIndex): DeadLetterEntry

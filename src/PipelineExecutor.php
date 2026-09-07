@@ -202,7 +202,9 @@ final class PipelineExecutor
         $durationMs = (hrtime(true) - $elapsedStartNs) / 1_000_000;
         $peakMemory = memory_get_peak_usage(true);
 
-        $failedRows = $this->deadLetters->count();
+        // totalCount(), not count(): the collection caps how many entries it
+        // retains, but the reported failure total must stay exact.
+        $failedRows = $this->deadLetters->totalCount();
 
         // Record pipeline completion metric
         $this->metricsExporter->recordPipelineComplete($durationMs, $totalRowsProcessed, $failedRows);

@@ -43,6 +43,9 @@ class DataFlow
     /** @var int Rows between progress callback invocations. */
     private int $progressInterval = 100;
 
+    /** @var int|null Max dead-letter entries to retain; null for unlimited. */
+    private ?int $deadLetterLimit = DeadLetterCollection::DEFAULT_LIMIT;
+
     /** @var bool Whether to run in dry-run mode. */
     private bool $dryRun = false;
 
@@ -106,6 +109,32 @@ class DataFlow
     public function onError(callable $callback): static
     {
         $this->onError = $callback;
+        return $this;
+    }
+
+    /**
+     * Set how many failed rows to retain for inspection.
+     *
+     * Each retained failure holds the row, the exception, and its stack trace —
+     * roughly 13 KB — so retention is capped by default to keep memory bounded
+     * on long runs. The reported failure count stays exact either way; only the
+     * entries you can iterate are limited.
+     *
+     * Pass null to retain everything. That is unbounded: 25,000 failures costs
+     * roughly 275 MB, so only do it when failures are known to be few.
+     *
+     * @param int|null $limit Entries to retain, or null for unlimited.
+     * @return static
+     *
+     * @throws InvalidArgumentException When the limit is less than 1.
+     */
+    public function withDeadLetterLimit(?int $limit): static
+    {
+        if ($limit !== null && $limit < 1) {
+            throw new InvalidArgumentException('Dead-letter limit must be >= 1, or null for unlimited');
+        }
+
+        $this->deadLetterLimit = $limit;
         return $this;
     }
 
@@ -402,7 +431,7 @@ class DataFlow
 
         $executor = new PipelineExecutor(
             logger: $this->logger,
-            deadLetters: new DeadLetterCollection(),
+            deadLetters: new DeadLetterCollection($this->deadLetterLimit),
             onError: $this->onError,
             onProgress: $this->onProgress,
             progressInterval: $this->progressInterval,
